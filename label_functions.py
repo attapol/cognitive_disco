@@ -5,6 +5,25 @@ and output a label string.
 
 """
 
-def dimension_one(drelation):
-	senses = drelation.senses
+class LabelFunction(object):
+	
+	@classmethod
+	def label_name(self):
+		raise NotImplementedError("Subclasses should implement this!")
+
+	@classmethod
+	def label(self, drelation):
+		raise NotImplementedError("Subclasses should implement this!")
+
+class OriginalLabel(LabelFunction):
+
+	@classmethod
+	def label_name(self):
+		return 'original_label'
+
+	@classmethod
+	def label(self, drelation):
+		senses = drelation.senses
+		return senses[0]
+
 
