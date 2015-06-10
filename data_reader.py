@@ -29,6 +29,10 @@ class DRelation(object):
 	def doc_id(self):
 		return self.relation_dict['DocID']
 
+	@property
+	def relation_id(self):
+		return self.relation_dict['ID']
+
 	def _arg_tokens(self, arg_pos):
 		key = 'Arg%s' % arg_pos
 		token_list = self.relation_dict[key]['TokenList']	
@@ -39,8 +43,6 @@ class DRelation(object):
 
 	def __str__(self):
 		return self.relation_dict.__str__()
-		
-	
 
 def extract_implicit_relations(data_folder):
 	parse_file = '%s/pdtb-parses.json' % data_folder
