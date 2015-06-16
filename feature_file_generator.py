@@ -1,4 +1,14 @@
 from codecs import open as copen
+from data_reader import extract_implicit_relations
+
+def generate_feature_files(dir_list, ff_list, lf, nf, prefix):
+	for dir in dir_list:
+		relations = extract_implicit_relations(dir)
+		new_prefix = '%s/%s' % (dir, prefix)
+		if isinstance(lf, list):
+			make_sparse_feature_files_for_all_labels(relations, ff_list, lf, nf, new_prefix)
+		else:
+			make_sparse_feature_file(relations, ff_list, lf, nf, new_prefix)
 
 def make_sparse_feature_file(relations, ff_list, lf, nf, prefix):
 	"""Make sparse feature files
@@ -11,8 +21,8 @@ def make_sparse_feature_file(relations, ff_list, lf, nf, prefix):
 
 	"""
 	label_name = lf.label_name()
-	file_name = '%s_%s.features' % (prefix, label_name)
-	file = copen(file_name, 'w', encoding='utf8')
+	file_name = '%s.%s.features' % (prefix, label_name)
+	file = copen(file_name, mode='w', encoding='utf8')
 	for relation in relations:
 		feature_vector = []
 		for ff in ff_list:
@@ -22,5 +32,22 @@ def make_sparse_feature_file(relations, ff_list, lf, nf, prefix):
 		write_name_label_features(name, label, feature_vector, file)
 	file.close()
 
+def make_sparse_feature_files_for_all_labels(relations, ff_list, lf_list, nf, prefix):
+	feature_vectors = []
+	for relation in relations:
+		feature_vector = []
+		for ff in ff_list:
+			feature_vector.extend(ff(relation))	
+		feature_vectors.append(feature_vector)
+	for lf in lf_list:
+		label_name = lf.label_name()
+		file_name = '%s.%s.features' % (prefix, label_name)
+		file = copen(file_name, mode='w', encoding='utf8')
+		for feature_vector in feature_vectors:
+			label = lf.label(relation)
+			name = nf(relation)
+			write_name_label_features(name, label, feature_vector, file)
+		file.close()
+
 def write_name_label_features(name, label, feature_vector, file):
-	file.write('%s\t%s\t%s\n' % (name, label, ' '.join(feature_vector)))
+	file.write('%s %s %s\n' % (name, label, ' '.join(feature_vector)))
