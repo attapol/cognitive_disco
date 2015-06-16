@@ -80,7 +80,11 @@ class GenericMapping(object):
 
 		def label(self, drelation):
 			senses = drelation.senses
-			return self.mapping[senses[0]][self.dimension]
+			if senses[0] not in self.mapping:
+				print '%s NOT FOUND! Skipping' % senses[0]
+				return None
+			else:
+				return self.mapping[senses[0]][self.dimension]
 
 
 """ read json object (mapping) from file

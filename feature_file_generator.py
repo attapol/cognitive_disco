@@ -28,6 +28,8 @@ def make_sparse_feature_file(relations, ff_list, lf, nf, prefix):
 		for ff in ff_list:
 			feature_vector.extend(ff(relation))	
 		label = lf.label(relation)
+		if label is None:
+			continue
 		name = nf(relation)
 		write_name_label_features(name, label, feature_vector, file)
 	file.close()
@@ -43,8 +45,10 @@ def make_sparse_feature_files_for_all_labels(relations, ff_list, lf_list, nf, pr
 		label_name = lf.label_name()
 		file_name = '%s.%s.features' % (prefix, label_name)
 		file = copen(file_name, mode='w', encoding='utf8')
-		for feature_vector in feature_vectors:
+		for relation, feature_vector in zip(relations, feature_vectors):
 			label = lf.label(relation)
+			if label is None:
+				continue
 			name = nf(relation)
 			write_name_label_features(name, label, feature_vector, file)
 		file.close()
