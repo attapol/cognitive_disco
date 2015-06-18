@@ -14,7 +14,7 @@ senses = ['Temporal', 'Temporal.Asynchronous', 'Temporal.Asynchronous.Precedence
     for each sense label
 """
 
-basic_operation = ['additive', 'additive', 'additive', 'additive', 'additive', 'causal', 'causal', 'causal', 'causal', 'past', 'present', 'causal', 'causal', 'past', 'present', 'cause', 'condition', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'concession', 'contrast', 'n.a.', 'n.a.', 'Non-additive', 'additive', 'Non-additive', 'additive', 'Non-additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
+basic_operation = ['additive', 'additive', 'additive', 'additive', 'additive', 'causal', 'causal', 'causal', 'causal', 'past', 'present', 'causal', 'causal', 'past', 'present', 'cause', 'condition', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'concession', 'contrast', 'NA', 'NA', 'Non-additive', 'additive', 'Non-additive', 'additive', 'Non-additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
 
 
 
@@ -22,7 +22,7 @@ basic_operation = ['additive', 'additive', 'additive', 'additive', 'additive', '
     for each sense label
 """
 
-order = ['n.a.', 'n.a.', 'forward', 'backward', 'n.a.', 'n.a.', 'backward', 'forward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.']
+order = ['NA', 'NA', 'forward', 'backward', 'NA', 'NA', 'backward', 'forward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
 
 
 
@@ -34,7 +34,7 @@ sem_prag = ['sem', 'sem', 'sem', 'sem', 'sem', 'sem', 'sem', 'sem', 'sem', 'sem'
 
 """ polarity labels for each sense label
 """
-polarity = ['pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'n.a.', 'n.a.', 'neg', 'pos', 'neg', 'pos', 'neg', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos']
+polarity = ['pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'neg', 'NA', 'NA', 'neg', 'pos', 'neg', 'pos', 'neg', 'pos', 'pos', 'pos', 'pos', 'pos', 'pos']
 
 
 """ now create json object and write to file

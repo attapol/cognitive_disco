@@ -1,5 +1,6 @@
 from codecs import open as copen
 from data_reader import extract_implicit_relations
+from label_functions import OriginalLabel
 
 def generate_feature_files(dir_list, ff_list, lf, nf, prefix):
 	for dir in dir_list:
@@ -54,4 +55,4 @@ def make_sparse_feature_files_for_all_labels(relations, ff_list, lf_list, nf, pr
 		file.close()
 
 def write_name_label_features(name, label, feature_vector, file):
-	file.write('%s %s %s\n' % (name, label, ' '.join(feature_vector)))
+	file.write('%s\t%s\t%s\n' % (name, label, ' '.join(feature_vector)))

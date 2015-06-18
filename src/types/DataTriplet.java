@@ -3,7 +3,6 @@ package types;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import cc.mallet.pipe.Csv2FeatureVector;
 import cc.mallet.pipe.Pipe;
@@ -13,7 +12,7 @@ import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.InstanceList;
 
 public class DataTriplet {
-	public static final String DATA_PATTERN = "(\\w+)\\s([a-zA-Z0-9-]+)\\s(\\w+)";
+	public static final String DATA_PATTERN = "(\\w+)\\t([^\\t]+)\\t(.+)";
 	
 	private InstanceList trainingSet;
 	private InstanceList devSet;
@@ -32,6 +31,7 @@ public class DataTriplet {
 			String devFileName, String testFileName) throws FileNotFoundException{
 		System.out.println("Reading training set :" + trainingFileName);
 		trainingSet = importData(trainingFileName);
+		System.out.println("Using " + trainingSet.getAlphabet().size() + " features.");
 		
 		System.out.println("Reading dev set :" + devFileName);
 		devSet = importData(devFileName, trainingSet.getPipe());

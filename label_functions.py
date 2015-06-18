@@ -25,6 +25,16 @@ class OriginalLabel(LabelFunction):
 		senses = drelation.senses
 		return senses[0]
 
+class TopLevelLabel(LabelFunction):
+
+	def label_name(self):
+		return 'original_label'
+
+	def label(self, drelation):
+		senses = drelation.senses
+		return senses[0].split('.')[0]
+
+
 """Generic Mapper from JSON file
 
 The mapper file should be in this format
