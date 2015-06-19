@@ -22,6 +22,10 @@ public class DimensionMapper {
 	private HashMap<ArrayList<String>, HashSet<Sense> > dimensionsToSense = new HashMap<ArrayList<String>, HashSet<Sense>>();
 	
 	
+	public DimensionMapper() {
+		
+	}
+	
 	public DimensionMapper(String mappingJson) throws IOException, JSONException{
 		String jsonString = FileUtils.readFileToString(new File(mappingJson));
 		mapping = new JSONObject(jsonString);
