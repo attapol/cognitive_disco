@@ -77,6 +77,13 @@ public class Sense {
 		return splitSense[0];
 	}
 	
+	public boolean isAtLeastSecondLevel() {
+		return splitSense.length > 1;
+	}
+	public String getLevel2Label(){
+		return isAtLeastSecondLevel() ? splitSense[1] : "";
+	}
+	
 	public void setDimensions(String[] dimensions) {
 		this.dimensions = dimensions;
 	}

@@ -22,6 +22,10 @@ public class DimensionMapper {
 	private HashMap<ArrayList<String>, HashSet<Sense> > dimensionsToSense = new HashMap<ArrayList<String>, HashSet<Sense>>();
 	
 	
+	public DimensionMapper() {
+		
+	}
+	
 	public DimensionMapper(String mappingJson) throws IOException, JSONException{
 		String jsonString = FileUtils.readFileToString(new File(mappingJson));
 		mapping = new JSONObject(jsonString);
@@ -56,22 +60,43 @@ public class DimensionMapper {
 	
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
+		sb.append("All levels\n");
 		for (ArrayList<String> dimension : dimensionsToSense.keySet()){
 			HashSet<Sense> senses = dimensionsToSense.get(dimension);
-			for (String d : dimension) sb.append(d + " + ");
+			sb.append(String.join(" + ", dimension));
+			//for (String d : dimension) sb.append(d + " + ");
 			sb.append(" -->\n");
 			for (Sense sense : senses){
 				sb.append("\t" + sense.getRawSense() + "\n");
 			}
 			sb.append("\n");
 		}
+		
+		sb.append("=============================================\n");
+		sb.append("Top level only\n");
+		for (ArrayList<String> dimension : dimensionsToSense.keySet()){
+			HashSet<Sense> senses = dimensionsToSense.get(dimension);
+			for (String d : dimension) sb.append(d + " + ");
+			sb.append(" -->\n");
+			
+            HashSet<String> seenLabels = new HashSet<String>();
+			for (Sense sense : senses){
+				String label = sense.getTopLevelLabel();
+				if (!seenLabels.contains(label)){
+					sb.append("\t" + label + "\n");
+					seenLabels.add(label);
+				}
+			}
+			sb.append("\n");
+		}
+		
 		return sb.toString();
+		
 	}
-	
 	public String getTopLevelLabel(ArrayList<String> dimensions){
 		HashSet<Sense> senses = this.dimensionsToSense.get(dimensions);
 		if (senses == null) {
-			System.out.println("Invalid dimension combination");
+			//System.out.println("Invalid dimension combination");
 			return "Expansion";
 		}
 		
@@ -82,8 +107,8 @@ public class DimensionMapper {
 		
 		Object[] labels = labelSet.toArray();
 		if (labels.length > 1) {
-			System.out.println("More than one mapping.");
-			for (Object l : labels) System.out.println(l);
+			//System.out.println("More than one mapping.");
+			//for (Object l : labels) System.out.println(l);
 			return "Expansion";
 		}
 		return (String)labels[0];
@@ -104,5 +129,10 @@ public class DimensionMapper {
 	public String getFeatureFileName(String experimentName, String trainingDir) {
 		return trainingDir + "/" + experimentName + ".original_label.features";
 	}
-	
+
+	public static void main(String[] args) throws JSONException, IOException {
+		//DimensionMapper dm = new DimensionMapper(args[0]);
+		DimensionMapper dm = new DimensionMapper("mapping0.json");
+		System.out.println(dm.toString());
+	}
 }

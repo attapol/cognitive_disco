@@ -12,9 +12,13 @@ import types.SimpleConfusionMatrix;
 
 public abstract class CognitiveDiscourseParserBase {
 
-	protected DimensionMapper dm;
+	protected DimensionMapper dm = new DimensionMapper();
 	protected DataTriplet[] data;
 	protected DataTriplet originalData;
+	
+	public CognitiveDiscourseParserBase() {
+		
+	}
 	
 	public CognitiveDiscourseParserBase(String experimentName, String mappingJson, String trainingDir, String devDir, String testDir) throws JSONException, IOException{
 		dm = new DimensionMapper(mappingJson);
@@ -28,7 +32,7 @@ public abstract class CognitiveDiscourseParserBase {
 		originalData = loadOriginalData(experimentName, trainingDir, devDir, testDir);
 	}
 	
-	private DataTriplet loadOriginalData(String experimentName,
+	protected DataTriplet loadOriginalData(String experimentName,
 			String trainingDir, String devDir, String testDir) throws FileNotFoundException {
 		// TODO Auto-generated method stub
 		String trainingFileName = dm.getFeatureFileName(experimentName, trainingDir);
@@ -49,11 +53,11 @@ public abstract class CognitiveDiscourseParserBase {
 		System.out.println(cm.toString());
 	}
 	
-	abstract public void trainTest();
+	abstract public void trainTest() throws FileNotFoundException;
 	
 	/*
-	 * Supposedly, it will call the Python featurizer and write features to file.
-	 * Then classify the data 
+	 * This will read in the feature file 
+	 * and return a string array of labels
 	 */
-	abstract public void classify(String dataDir);
+	abstract public String[] classify(String dataFile) throws FileNotFoundException;
 }

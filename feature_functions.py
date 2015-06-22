@@ -8,6 +8,19 @@ the implementation should move to the methods not in the feature functions.
 """
 import re
 from nltk.tree import Tree
+
+
+def first3(relation):
+	feature_vector = []
+	arg_tokens = relation.arg1_tokens
+	arg_tokens.extend(relation.arg2_tokens)
+	for arg_token in arg_tokens:
+		feature = 'BOW_%s' % arg_token
+		feature = re.sub(':','COLON', feature)
+		feature_vector.append(feature)
+	return feature_vector[0:3]
+
+
 def bag_of_words(relation):
 	"""Bag of words features
 
