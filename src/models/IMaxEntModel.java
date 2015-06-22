@@ -3,6 +3,7 @@ package models;
 import java.io.IOException;
 
 import org.json.JSONException;
+
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.MaxEntTrainer;
 
@@ -24,7 +25,7 @@ public class IMaxEntModel extends IndependentModel {
 		IndependentModel classifier = new IMaxEntModel("experiment0", "mapping1.json", 
 				"conll15-st-05-19-15-train", "conll15-st-05-19-15-dev", "conll15-st-05-19-15-test");
 		classifier.trainTest();
-		System.out.println(classifier.dm.toString());
+		//System.out.println(classifier.dm.toString());
 		
 	}
 	
@@ -32,11 +33,5 @@ public class IMaxEntModel extends IndependentModel {
 		return new MaxEntTrainer();
 	}
 
-	@Override
-	public void classify(String dataDir) {
-		// TODO Auto-generated method stub
-		
-	}
-	
 
 }

@@ -53,11 +53,11 @@ public abstract class CognitiveDiscourseParserBase {
 		System.out.println(cm.toString());
 	}
 	
-	abstract public void trainTest();
+	abstract public void trainTest() throws FileNotFoundException;
 	
 	/*
-	 * Supposedly, it will call the Python featurizer and write features to file.
-	 * Then classify the data 
+	 * This will read in the feature file 
+	 * and return a string array of labels
 	 */
-	abstract public void classify(String dataDir);
+	abstract public String[] classify(String dataFile) throws FileNotFoundException;
 }

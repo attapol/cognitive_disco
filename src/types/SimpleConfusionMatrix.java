@@ -203,8 +203,11 @@ public class SimpleConfusionMatrix{
 	}
 
 	public String getPerformanceReport(){
-		StringBuffer sb = new StringBuffer ();
-		if (classifier != null) sb.append(classifier.getClass().getName() + "\n");
+		StringBuilder sb = new StringBuilder ();
+		if (classifier != null) {
+			String newString = classifier.getClass().getName() + "\n";
+			sb.append(newString);
+		}
 		double accuracy = getAccuracy();
 		double macroF1 = 0.0;
 		double microF1 = 0.0;
