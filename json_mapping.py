@@ -10,16 +10,20 @@ senses = ['Temporal', 'Temporal.Asynchronous', 'Temporal.Asynchronous.Precedence
 
 
 
-""" labels for basic operations (additive, non-additive, causal, non-causal)
-    for each sense label
+""" mapping 3a: basic operation (temporal, causal, additive, non-causal)
 """
 
-"""basic_operation = ['additive', 'additive', 'additive', 'additive', 'additive', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'Non-causal', 'n.a.', 'n.a.', 'Non-additive', 'additive', 'Non-additive', 'additive', 'Non-additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
-
--> change Non-causal and Non-additive to n.a.
+"""
+basic_operation = ['temporal', 'temporal', 'temporal', 'temporal', 'temporal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'n.a.', 'causal', 'causal', 'causal', 'additive', 'additive', 'additive', 'additive', 'additive', 'n.a.', 'n.a.', 'non-causal', 'additive', 'non-causal', 'additive', 'non-causal', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
 """
 
-basic_operation = ['temporal', 'temporal', 'temporal', 'temporal', 'temporal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'additive', 'n.a.', 'additive', 'n.a.', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
+""" mapping 3b: basic operation (temporal, causal, additive (without non-causal; 
+    all non-causals => additive))
+"""
+
+
+basic_operation = ['temporal', 'temporal', 'temporal', 'temporal', 'temporal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'causal', 'n.a.', 'causal', 'causal', 'causal', 'additive', 'additive', 'additive', 'additive', 'additive', 'n.a.', 'n.a.', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive', 'additive']
+
 
 
 
@@ -27,8 +31,7 @@ basic_operation = ['temporal', 'temporal', 'temporal', 'temporal', 'temporal', '
     for each sense label
 """
 
-order = ['n.a.', 'n.a.', 'forward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'backward', 'forward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.']
-
+order = ['n.a.', 'n.a.', 'forward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'backward', 'forward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'forward', 'backward', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'] 
 
 
 """ labels for semantic/pragmatic dimension for each sense label
@@ -56,6 +59,6 @@ for c in range(len(senses)):
     mapping[senses[c]]['polarity'] = polarity[c]
 
 
-with open("mapping2.json", "w") as fp:
+with open("mapping3b.json", "w") as fp:
     json.dump(mapping, fp, indent=2)
 
