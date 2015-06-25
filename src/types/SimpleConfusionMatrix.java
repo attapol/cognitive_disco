@@ -1,6 +1,8 @@
 package types;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import cc.mallet.classify.Classifier;
 import cc.mallet.classify.Classification;
@@ -11,6 +13,7 @@ import cc.mallet.types.Alphabet;
 import cc.mallet.types.LabelVector;
 import cc.mallet.types.Labeling;
 import cc.mallet.types.MatrixOps;
+
 import org.json.*;
 
 /**
@@ -57,14 +60,23 @@ public class SimpleConfusionMatrix{
 		labelAlphabet = dict;
 	}
 	
+	private static Alphabet makeAlphabet(String[] trueLabels) {
+		List<String> allLabel = Arrays.asList(trueLabels);
+		allLabel.sort(null);
+		
+		Alphabet labelAlphabet = new Alphabet();
+		for (String label : allLabel) labelAlphabet.lookupIndex(label); 
+		labelAlphabet.stopGrowth();
+		return labelAlphabet;
+	}
+	
 	public SimpleConfusionMatrix(String[] trueLabels, String[] predictedLabels)
 	{
 		assert (trueLabels.length == predictedLabels.length);
 		int numInstances = trueLabels.length;
+		labelAlphabet = makeAlphabet(trueLabels);
 		
-		labelAlphabet = new Alphabet();
-		for (String label : trueLabels) labelAlphabet.lookupIndex(label); 
-		labelAlphabet.stopGrowth();
+
 		numClasses = labelAlphabet.size();
 		values = new int[numClasses][numClasses];
 		for (int i = 0; i < numInstances; i++){

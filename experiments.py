@@ -12,7 +12,7 @@ def experiment0(mapping_file, dir_list):
 	ff_list = [f.first3]
 	dimension_mapper = l.GenericMapping(mapping_file)
 	lf_list = dimension_mapper.get_all_label_functions()
-	lf_list.append(l.TopLevelLabel())
+	lf_list.append(l.OriginalLabel())
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, 'experiment0')
 
