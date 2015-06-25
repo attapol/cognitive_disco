@@ -8,6 +8,7 @@ import org.json.JSONException;
 
 import types.DataTriplet;
 import types.DimensionMapper;
+import types.LabelType;
 import types.SimpleConfusionMatrix;
 
 public abstract class CognitiveDiscourseParserBase {
@@ -15,6 +16,8 @@ public abstract class CognitiveDiscourseParserBase {
 	protected DimensionMapper dm = new DimensionMapper();
 	protected DataTriplet[] data;
 	protected DataTriplet originalData;
+	
+
 	
 	public CognitiveDiscourseParserBase() {
 		
@@ -53,11 +56,16 @@ public abstract class CognitiveDiscourseParserBase {
 		System.out.println(cm.toString());
 	}
 	
+	/*
+	 * Train on the training set and test on the dev set 
+	 * Print out the results in a confusion matrix and overall accuracy
+	 */
 	abstract public void trainTest() throws FileNotFoundException;
 	
 	/*
 	 * This will read in the feature file 
 	 * and return a string array of labels
 	 */
-	abstract public String[] classify(String dataFile) throws FileNotFoundException;
+	abstract public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException;
+
 }

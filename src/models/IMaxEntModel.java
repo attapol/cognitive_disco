@@ -25,13 +25,13 @@ public class IMaxEntModel extends IndependentModel {
 		IndependentModel classifier = new IMaxEntModel(args[0], args[1], 
 				"conll15-st-05-19-15-train", "conll15-st-05-19-15-dev", "conll15-st-05-19-15-test");
 		classifier.trainTest();
-		//System.out.println(classifier.dm.toString());
 		
 	}
 	
 	public ClassifierTrainer<?> getNewTrainer() {
 		return new MaxEntTrainer();
 	}
+
 
 
 }

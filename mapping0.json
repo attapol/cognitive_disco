@@ -1,1 +1,212 @@
-{"Comparison.Pragmatic": {"polarity": "neg", "order": "NA", "sem_prag": "prag", "basic": "contrast"}, "Contingency.Condition": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "causal"}, "Expansion.Alternative": {"polarity": "NA", "order": "NA", "sem_prag": "sem", "basic": "NA"}, "Temporal": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Contingency.Cause.Reason": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "causal"}, "Expansion": {"polarity": "NA", "order": "NA", "sem_prag": "sem", "basic": "NA"}, "Temporal.Asynchronous.Succession": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "additive"}, "Contingency": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "causal"}, "Expansion.Instantiation": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Contingency.Condition.Hypothetical": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "causal"}, "Contingency.Condition.Unreal": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "present"}, "Comparison.Contrast.Juxtaposition": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Contingency.Pragmatic": {"polarity": "pos", "order": "NA", "sem_prag": "prag", "basic": "condition"}, "Comparison.Concession.Contra-expectation": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Expansion.Restatement.Generalization": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Comparison.Contrast": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Expansion.Alternative.Chosen": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-additive"}, "Expansion.Restatement.Specification": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Temporal.Synchrony": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Comparison": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Contingency.Cause.Result": {"polarity": "pos", "order": "forward", "sem_prag": "sem", "basic": "causal"}, "Expansion.Conjunction": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Expansion.Exception": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-additive"}, "Expansion.Alternative.Conjunctive": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Contingency.Condition.Factual": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "present"}, "Expansion.Restatement.Equivalence": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Comparison.Contrast.Opposition": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Temporal.Asynchronous": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Temporal.Asynchronous.Precedence": {"polarity": "pos", "order": "forward", "sem_prag": "sem", "basic": "additive"}, "Comparison.Concession.Expectation": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Expansion.Restatement": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Expansion.List": {"polarity": "pos", "order": "NA", "sem_prag": "sem", "basic": "additive"}, "Expansion.Alternative.Disjunctive": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-additive"}, "Comparison.Concession": {"polarity": "neg", "order": "NA", "sem_prag": "sem", "basic": "Non-causal"}, "Contingency.Condition.General": {"polarity": "pos", "order": "backward", "sem_prag": "sem", "basic": "causal"}}
+{
+    "Comparison": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Concession": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Concession.Contra-expectation": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Concession.Expectation": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Contrast": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Contrast.Juxtaposition": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Contrast.Opposition": {
+        "basic": "Non-causal",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Comparison.Pragmatic": {
+        "basic": "contrast",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "prag"
+    },
+    "Contingency": {
+        "basic": "causal",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Cause.Reason": {
+        "basic": "causal",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Cause.Result": {
+        "basic": "causal",
+        "order": "forward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Condition": {
+        "basic": "causal",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Condition.Factual": {
+        "basic": "present",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Condition.General": {
+        "basic": "causal",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Condition.Hypothetical": {
+        "basic": "causal",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Condition.Unreal": {
+        "basic": "present",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Contingency.Pragmatic": {
+        "basic": "condition",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "prag"
+    },
+    "Expansion": {
+        "basic": "NA",
+        "order": "NA",
+        "polarity": "NA",
+        "sem_prag": "sem"
+    },
+    "Expansion.Alternative": {
+        "basic": "NA",
+        "order": "NA",
+        "polarity": "NA",
+        "sem_prag": "sem"
+    },
+    "Expansion.Alternative.Chosen": {
+        "basic": "Non-additive",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Expansion.Alternative.Conjunctive": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Alternative.Disjunctive": {
+        "basic": "Non-additive",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Expansion.Conjunction": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Exception": {
+        "basic": "Non-additive",
+        "order": "NA",
+        "polarity": "neg",
+        "sem_prag": "sem"
+    },
+    "Expansion.Instantiation": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.List": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Restatement": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Restatement.Equivalence": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Restatement.Generalization": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Expansion.Restatement.Specification": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Temporal": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Temporal.Asynchronous": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Temporal.Asynchronous.Precedence": {
+        "basic": "additive",
+        "order": "forward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Temporal.Asynchronous.Succession": {
+        "basic": "additive",
+        "order": "backward",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    },
+    "Temporal.Synchrony": {
+        "basic": "additive",
+        "order": "NA",
+        "polarity": "pos",
+        "sem_prag": "sem"
+    }
+}

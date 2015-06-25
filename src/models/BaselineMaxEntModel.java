@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.json.JSONException;
 
 import types.DataTriplet;
+import types.LabelType;
 import types.SimpleConfusionMatrix;
 import cc.mallet.classify.Classifier;
 import cc.mallet.classify.ClassifierTrainer;
@@ -24,7 +25,7 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 	}
 
 	@Override
-	public void trainTest() {
+	public void trainTest() throws FileNotFoundException {
 		// TODO Auto-generated method stub
 		ClassifierTrainer<?> trainer = new MaxEntTrainer();
 		trainer.train(this.originalData.getTrainingSet());
@@ -35,8 +36,9 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 		
 	}
 
+	// TODO: Does not support all three label types yet
 	@Override
-	public String[] classify(String dataFile) throws FileNotFoundException {
+	public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException {
 		// TODO Auto-generated method stub
 		InstanceList unseenData = DataTriplet.importData(dataFile, classifier.getInstancePipe());
 		int numInstances = unseenData.size();
@@ -60,5 +62,7 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 				"conll15-st-05-19-15-train", "conll15-st-05-19-15-dev", "conll15-st-05-19-15-test");
 		classifier.trainTest();
 	}
+
+
 
 }
