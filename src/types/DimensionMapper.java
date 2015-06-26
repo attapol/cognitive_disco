@@ -60,8 +60,11 @@ public class DimensionMapper {
 	public String getLabel(ArrayList<String> dimensions, LabelType labelType) {
 		HashSet<Sense> senses = this.dimensionsToSense.get(dimensions);
 		HashSet<String> labelSet = new HashSet<String>();
-		for (Sense sense : senses){
-			if (sense.isFinestSense()) labelSet.add(sense.getLabel(labelType));
+		if (senses != null) {
+			for (Sense sense : senses){
+				String s = sense.getLabel(labelType);
+				if (sense.isFinestSense() && !s.equals(Sense.NULL_SENSE)) labelSet.add(s);
+			}
 		}
 		Object[] labels = labelSet.toArray();
 		if (labels.length == 0) {

@@ -106,6 +106,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			predictedLabels = this.classify(this.originalData.getDevFileName(), labelType);
+			//for (String s: predictedLabels) System.out.println(s);
 			SimpleConfusionMatrix cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
 
