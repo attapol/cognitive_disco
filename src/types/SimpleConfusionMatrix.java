@@ -66,7 +66,6 @@ public class SimpleConfusionMatrix{
 		
 		Alphabet labelAlphabet = new Alphabet();
 		for (String label : allLabel) labelAlphabet.lookupIndex(label); 
-		labelAlphabet.stopGrowth();
 		return labelAlphabet;
 	}
 	
@@ -75,6 +74,7 @@ public class SimpleConfusionMatrix{
 		assert (trueLabels.length == predictedLabels.length);
 		int numInstances = trueLabels.length;
 		labelAlphabet = makeAlphabet(trueLabels);
+		for (String label : predictedLabels) labelAlphabet.lookupIndex(label); 
 		
 
 		numClasses = labelAlphabet.size();
