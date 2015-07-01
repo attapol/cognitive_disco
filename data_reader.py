@@ -12,6 +12,10 @@ class DRelation(object):
 	def __init__(self, relation_dict, parse):
 		self.relation_dict = relation_dict
 		self.parse = parse	
+		self.arg1_tree = None
+		self.arg1_tree_token_indices = None
+		self.arg2_tree = None
+		self.arg2_tree_token_indices = None
 
 	@property
 	def senses(self):
@@ -25,6 +29,12 @@ class DRelation(object):
 	def arg2_tokens(self):
 		return self._arg_tokens(2)
 
+
+	def arg_words(self, arg_pos):
+		assert(arg_pos == 1 or arg_pos == 2)
+		key = 'Arg%s' % arg_pos
+		word_list = self.relation_dict[key]['TokenList']	
+		return [Word(x, self.parse[self.doc_id]) for x in word_list]
 
 	def arg_tree(self, arg_pos):
 		"""Extract the tree for the
@@ -45,6 +55,12 @@ class DRelation(object):
 		key = 'Arg%s' % arg_pos
 		token_indices = [x[4] for x in self.relation_dict[key]['TokenList'] if x[3] == sentence_index]
 		return tree, token_indices
+
+	def arg_token_addresses(self, arg_pos):
+		assert(arg_pos == 1 or arg_pos == 2)
+		key = 'Arg%s' % arg_pos
+		return self.relation_dict[key]['TokenList']	
+
 
 	@property
 	def doc_id(self):
@@ -70,6 +86,28 @@ class DRelation(object):
 
 	def __str__(self):
 		return self.relation_dict.__str__()
+
+class Word(object):
+	"""Word class wrapper
+
+	[u"'ve",
+		{u'CharacterOffsetBegin':2449,
+		u'CharacterOffsetEnd':2452,
+		u'Linkers':[u'arg2_15006',u'arg1_15008'],
+		u'PartOfSpeech':u'VBP'}]
+	"""
+
+	def __init__(self, word_address, parse):
+		self.word_address = word_address
+		self.word_token, self.word_info = parse['sentences'][word_address[3]]['words'][word_address[4]]
+
+	@property
+	def pos(self):
+		return self.word_info['PartOfSpeech']
+
+	@property
+	def sentence_index(self):
+		return self.word_address[3]
 
 def extract_implicit_relations(data_folder):
 	parse_file = '%s/pdtb-parses.json' % data_folder

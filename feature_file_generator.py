@@ -55,4 +55,5 @@ def make_sparse_feature_files_for_all_labels(relations, ff_list, lf_list, nf, pr
 		file.close()
 
 def write_name_label_features(name, label, feature_vector, file):
+	if len(feature_vector) == 0: feature_vector.append('NONE')
 	file.write('%s\t%s\t%s\n' % (name, label, ' '.join(feature_vector)))
