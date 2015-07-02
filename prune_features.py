@@ -1,5 +1,6 @@
 """Prune features that are fewer than the specified number"""
 from collections import Counter
+from codecs import open as copen
 import argparse
 
 
@@ -11,7 +12,7 @@ def get_feature_counter(file_name):
 	[name]\t[label]\t[feature1] [feature2] ...
 	"""
 	counter = Counter()
-	lines = open(file_name).readlines()
+	lines = copen(file_name, encoding='utf8').readlines()
 	for line in lines:
 		name, label, features = line.strip().split('\t')
 		for feature in features.split(' '):
@@ -28,15 +29,16 @@ def write_training_file(file_name, new_file_name, counter, cutoff):
 	It slows down a bit because we have to re-read the file instead using 
 	whatever is already in the memory.
 	"""
-	with open(file_name) as f:
+	with copen(file_name, encoding='utf8') as f:
 		lines = f.readlines()
-	new_training_file = open(new_file_name, 'w')
+	new_training_file = copen(new_file_name, 'w', encoding='utf8')
 	for line in lines:
 		name, label, features = line.strip().split('\t')
 		features = [x for x in features.split(' ') if counter[x] > cutoff]
 		if len(features) == 0: 
 			features = ['NO_FEATURE']
 		new_training_file.write('%s\t%s\t%s\n' % (name, label, ' '.join(features)))
+	new_training_file.close()
 
 
 def prune_features(file_name, cutoff, new_file_name=None):

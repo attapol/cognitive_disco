@@ -14,8 +14,8 @@ from nltk.tree import Tree
 
 def first3(relation):
 	feature_vector = []
-	arg_tokens = relation.arg1_tokens
-	arg_tokens.extend(relation.arg2_tokens)
+	arg_tokens = relation.arg_tokens(1)
+	arg_tokens.extend(relation.arg_tokens(2))
 	for arg_token in arg_tokens:
 		feature = 'BOW_%s' % arg_token
 		feature = re.sub(':','COLON', feature)
@@ -29,8 +29,8 @@ def bag_of_words(relation):
 	it will mess up Mallet feature vector converter
 	"""
 	feature_vector = []
-	arg_tokens = relation.arg1_tokens
-	arg_tokens.extend(relation.arg2_tokens)
+	arg_tokens = relation.arg_tokens(1)
+	arg_tokens.extend(relation.arg_tokens(2))
 	for arg_token in arg_tokens:
 		feature = 'BOW_%s' % arg_token
 		feature = re.sub(':','COLON', feature)
@@ -47,8 +47,8 @@ def word_pairs(relation):
 	it will mess up Mallet feature vector converter
 	"""
 	feature_vector = []
-	for arg1_token in relation.arg1_tokens:
-		for arg2_token in relation.arg2_tokens:
+	for arg1_token in relation.arg_tokens(1):
+		for arg2_token in relation.arg_tokens(2):
 			feature = 'WP_%s_%s' % (arg1_token, arg2_token)
 			feature = re.sub(':','COLON', feature)
 			feature_vector.append(feature)
@@ -116,12 +116,12 @@ def first_last_first_3(relation):
 	first three of arg1
 	first three of arg2
 	"""
-	first_arg1 = relation.arg1_tokens[0]
-	last_arg1 = relation.arg1_tokens[-1]
-	first_arg2 = relation.arg1_tokens[0]
-	last_arg2 = relation.arg1_tokens[-1]
-	first_3_arg1 = '_'.join(relation.arg1_tokens[:3])
-	first_3_arg2 = '_'.join(relation.arg2_tokens[:3])
+	first_arg1 = relation.arg_tokens(1)[0]
+	last_arg1 = relation.arg_tokens(1)[-1]
+	first_arg2 = relation.arg_tokens(1)[0]
+	last_arg2 = relation.arg_tokens(1)[-1]
+	first_3_arg1 = '_'.join(relation.arg_tokens(1)[:3])
+	first_3_arg2 = '_'.join(relation.arg_tokens(2)[:3])
 
 	feature_vector = []
 	feature_vector.append(first_arg1)
@@ -240,7 +240,7 @@ class LexiconBasedFeaturizer(object):
 		for i, w in enumerate(words):
 			key = w.word_token.upper()
 			if key in self.inquirer_dict:
-				tags.append(self.inquirer_dict[key])
+				tags.extend(self.inquirer_dict[key])
 		return tags
 	
 	def inquirer_tag_feature(self, relation):
@@ -300,8 +300,8 @@ class BrownClusterFeaturizer(object):
 			return 'UNK'
 
 	def brown_words(self, relation):
-		arg1_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg1_tokens])
-		arg2_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg2_tokens])
+		arg1_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg_tokens(1)])
+		arg2_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg_tokens(2)])
 		arg1_only = arg1_brown_words - arg2_brown_words
 		arg2_only = arg2_brown_words - arg1_brown_words
 		both_args = arg1_brown_words.intersection(arg2_brown_words)
@@ -323,9 +323,9 @@ class BrownClusterFeaturizer(object):
 
 		"""
 		feature_vector = []
-		for arg1_token in relation.arg1_tokens:
-			for arg2_token in relation.arg2_tokens:
-				arg1_assn = self.get_cluster_assignment(arg1_token)
+		for arg1_token in relation.arg_tokens(1):
+			arg1_assn = self.get_cluster_assignment(arg1_token)
+			for arg2_token in relation.arg_tokens(2):
 				arg2_assn = self.get_cluster_assignment(arg2_token)
 				feature = 'BP_%s_%s' % (arg1_assn, arg2_assn)
 				feature = re.sub(':','COLON', feature)

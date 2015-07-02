@@ -61,9 +61,11 @@ def experiment2_1(mapping_file, dir_list):
 	ff_list = [
 			f.is_arg1_multiple_sentences, 
 			f.first_last_first_3, f.average_vp_length, f.modality, 
-			plf.inquirer_tag_feature, 
+			#plf.inquirer_tag_feature, 
 			#plf.mpqa_score_feature, plf.levin_verbs, 
-			f.production_rules, bf.brown_words, bf.brown_word_pairs]
+			#f.production_rules, bf.brown_words, 
+			bf.brown_word_pairs
+			]
 	dimension_mapper = l.GenericMapping(mapping_file)
 	lf_list = dimension_mapper.get_all_label_functions()
 	lf_list.append(l.OriginalLabel())

@@ -12,29 +12,34 @@ class DRelation(object):
 	def __init__(self, relation_dict, parse):
 		self.relation_dict = relation_dict
 		self.parse = parse	
-		self.arg1_tree = None
-		self.arg1_tree_token_indices = None
-		self.arg2_tree = None
-		self.arg2_tree_token_indices = None
+		self._arg_tokens = {}
+		self._arg_tokens[1] = None
+		self._arg_tokens[2] = None
+
+		self._arg_words = {}
+		self._arg_words[1] = None
+		self._arg_words[2] = None
+
+		self._arg_tree = {}
+		self._arg_tree[1] = None
+		self._arg_tree[2] = None
+
+		self._arg1_tree = None
+		self._arg1_tree_token_indices = None
+		self._arg2_tree = None
+		self._arg2_tree_token_indices = None
 
 	@property
 	def senses(self):
 		return self.relation_dict['Sense']
 
-	@property
-	def arg1_tokens(self):
-		return self._arg_tokens(1)
-
-	@property
-	def arg2_tokens(self):
-		return self._arg_tokens(2)
-
-
 	def arg_words(self, arg_pos):
 		assert(arg_pos == 1 or arg_pos == 2)
-		key = 'Arg%s' % arg_pos
-		word_list = self.relation_dict[key]['TokenList']	
-		return [Word(x, self.parse[self.doc_id]) for x in word_list]
+		if self._arg_words[arg_pos] is None:
+			key = 'Arg%s' % arg_pos
+			word_list = self.relation_dict[key]['TokenList']	
+			self._arg_words[arg_pos] = [Word(x, self.parse[self.doc_id]) for x in word_list]
+		return self._arg_words[arg_pos]
 
 	def arg_tree(self, arg_pos):
 		"""Extract the tree for the
@@ -44,17 +49,19 @@ class DRelation(object):
 			2) token indices (not address tuples) of that tree. 
 		"""
 		assert(arg_pos == 1 or arg_pos == 2)
-		trees, sentence_indices = self.arg_trees(arg_pos)	
-		if arg_pos == 1:
-			tree = trees[-1]
-			sentence_index = sentence_indices[-1]
-		elif arg_pos == 2:
-			tree = trees[0]
-			sentence_index = sentence_indices[0]
+		if self._arg_tree[arg_pos] is None:
+			trees, sentence_indices = self.arg_trees(arg_pos)	
+			if arg_pos == 1:
+				tree = trees[-1]
+				sentence_index = sentence_indices[-1]
+			elif arg_pos == 2:
+				tree = trees[0]
+				sentence_index = sentence_indices[0]
 
-		key = 'Arg%s' % arg_pos
-		token_indices = [x[4] for x in self.relation_dict[key]['TokenList'] if x[3] == sentence_index]
-		return tree, token_indices
+			key = 'Arg%s' % arg_pos
+			token_indices = [x[4] for x in self.relation_dict[key]['TokenList'] if x[3] == sentence_index]
+			self._arg_tree[arg_pos] = (tree, token_indices)
+		return self._arg_tree[arg_pos]
 
 	def arg_token_addresses(self, arg_pos):
 		assert(arg_pos == 1 or arg_pos == 2)
@@ -70,10 +77,13 @@ class DRelation(object):
 	def relation_id(self):
 		return self.relation_dict['ID']
 
-	def _arg_tokens(self, arg_pos):
-		key = 'Arg%s' % arg_pos
-		token_list = self.relation_dict[key]['TokenList']	
-		return [self.parse[self.doc_id]['sentences'][x[3]]['words'][x[4]][0] for x in token_list]
+	def arg_tokens(self, arg_pos):
+		assert(arg_pos == 1 or arg_pos == 2)
+		if self._arg_tokens[arg_pos] is None:
+			key = 'Arg%s' % arg_pos
+			token_list = self.relation_dict[key]['TokenList']	
+			self._arg_tokens[arg_pos] = [self.parse[self.doc_id]['sentences'][x[3]]['words'][x[4]][0] for x in token_list]
+		return self._arg_tokens[arg_pos]
 
 	def arg_trees(self, arg_pos):
 		key = 'Arg%s' % arg_pos
