@@ -182,8 +182,8 @@ public class DimensionMapper {
 	}
 
 	public static void main(String[] args) throws JSONException, IOException {
-		//DimensionMapper dm = new DimensionMapper(args[0]);
-		DimensionMapper dm = new DimensionMapper("mapping3b.json");
+		DimensionMapper dm = new DimensionMapper(args[0]);
+		//DimensionMapper dm = new DimensionMapper("mapping3b.json");
 		System.out.println(dm.toString());
 	}
 }

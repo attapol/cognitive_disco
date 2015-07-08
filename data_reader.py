@@ -116,11 +116,15 @@ class Word(object):
 		return self.word_info['PartOfSpeech']
 
 	@property
+	def lemma(self):
+		return self.word_info['Lemma']
+
+	@property
 	def sentence_index(self):
 		return self.word_address[3]
 
 def extract_implicit_relations(data_folder):
-	parse_file = '%s/pdtb-parses.json' % data_folder
+	parse_file = '%s/pdtb-parses-plus.json' % data_folder
 	parse = json.load(open(parse_file))
 
 	relation_file = '%s/pdtb-data.json' % data_folder

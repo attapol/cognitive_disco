@@ -10,6 +10,7 @@ import json
 import os
 import re
 from nltk.tree import Tree
+from scipy.constants.constants import neutron_mass
 
 
 def first3(relation):
@@ -143,17 +144,12 @@ def production_rules(relation):
 	if len(rule_set1) == 0 or len(rule_set2) == 0:
 		return []
 
-	#rule_set1_only = rule_set1 - rule_set2 
-	#rule_set2_only = rule_set2 - rule_set1 
-	rule_set1_only = rule_set1
-	rule_set2_only = rule_set2
-
 	feature_vector = []
 	for rule in rule_set1.intersection(rule_set2):
 		feature_vector.append('BOTH_ARGS_RULE=%s' % rule)
-	for rule in rule_set1_only:
+	for rule in rule_set1:
 		feature_vector.append('ARG1RULE=%s' % rule)
-	for rule in rule_set2_only:
+	for rule in rule_set2:
 		feature_vector.append('ARG2RULE=%s' % rule)
 	return feature_vector
 	
@@ -199,8 +195,8 @@ class LexiconBasedFeaturizer(object):
 	def __init__(self):
 		home = os.path.expanduser('~')
 		self.load_inquirer('%s/nlp/lib/lexicon/inquirer/inquirer_merged.json' % home)
-		#self.load_mpqa('%s/nlp/lib/lexicon/mpqa_subj_05/mpqa_subj_05.json' % home)
-		#self.load_levin('%s/nlp/lib/lexicon/levin/levin.json' % home)
+		self.load_mpqa('%s/nlp/lib/lexicon/mpqa_subj_05/mpqa_subj_05.json' % home)
+		self.load_levin('%s/nlp/lib/lexicon/levin/levin.json' % home)
 
 	def load_inquirer(self, path):
 		"""Load Inquirer General Tag corpus
@@ -256,16 +252,72 @@ class LexiconBasedFeaturizer(object):
 		for arg2_tag in arg1_tags:
 			feature_vector.append('ARG2_TAG=%s' % arg1_tag)
 		return feature_vector
+	
+	def _get_mpqa_score(self, words):
+		positive_score = 0
+		negative_score = 0
+		neg_positive_score = 0
+		neutral_score = 0
+		for i, word in enumerate(words):
+			token = word.word_token.upper()
+			if token in self.mpqa_dict:
+				polarity = self.mpqa_dict[token][0]
+				if i != 0 and polarity == 'positive':
+					preceding_token = words[i-1].word_token.upper()
+					if (preceding_token in self.mpqa_dict and self.mpqa_dict[preceding_token] == 'negative'):
+						neg_positive_score += 1
+					else:
+						positive_score += 1
+				elif polarity == 'positive':
+					positive_score += 1
+				elif polarity =='negative':
+					negative_score += 1
+				elif polarity == 'neutral':
+					neutral_score += 1
+		return (positive_score, negative_score, neg_positive_score, neutral_score)
 
 	def mpqa_score_feature(self, relation):
-		arg1_tree, token_indices1 = relation.arg_tree(1)
-		arg2_tree, token_indices2 = relation.arg_tree(2)
-		pass
+		positive_score1, negative_score1, neg_positive_score1, neutral_score1 = \
+				self._get_mpqa_score(relation.arg_words(1))
+		positive_score2, negative_score2, neg_positive_score2, neutral_score2 = \
+				self._get_mpqa_score(relation.arg_words(2))
+
+		feature_vector1 = []
+		feature_vector1.append('Arg1MPQAPositive:%s' % positive_score1)
+		feature_vector1.append('Arg1MPQANegative:%s' % negative_score1)
+		feature_vector1.append('Arg1MPQANegPositive:%s' % neg_positive_score1)
+
+		feature_vector2 = []
+		feature_vector2.append('Arg2MPQAPositive:%s' % positive_score2)
+		feature_vector2.append('Arg2MPQANegative:%s' % negative_score2)
+		feature_vector2.append('Arg2MPQANegPositive:%s' % neg_positive_score2)
+
+		feature_vector = []
+		for f1 in feature_vector1:
+			for f2 in feature_vector2:
+				feature = '%s__%s' % (f1, f2)
+				feature_vector.append(feature.replace(':', 'COLON'))
+		feature_vector.extend(feature_vector1)
+		feature_vector.extend(feature_vector2)
+		return feature_vector
+
+	def _get_levin_verb_tags(self, words):
+		verbs_tags = []
+		for word in words:
+			if word.pos[0] == 'V':
+				if word.lemma in self.levin_dict:
+					verbs_tags.append(set(self.levin_dict[word.lemma]))
+		return verbs_tags
 
 	def levin_verbs(self, relation):
-		arg1_tree, token_indices1 = relation.arg_tree(1)
-		arg2_tree, token_indices2 = relation.arg_tree(2)
-		pass
+		arg1_levin_verb_tags = self._get_levin_verb_tags(relation.arg_words(1))		
+		arg2_levin_verb_tags = self._get_levin_verb_tags(relation.arg_words(2))
+		num_verbs_in_common = 0
+		for tags1 in arg1_levin_verb_tags:
+			for tags2 in arg2_levin_verb_tags:
+				if not tags1.isdisjoint(tags2):
+					num_verbs_in_common += 1
+		return ['COMMON_LEVIN_VERBS=%s' % num_verbs_in_common]
 
 
 class BrownClusterFeaturizer(object):

@@ -28,11 +28,24 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 	public void trainTest() throws FileNotFoundException {
 		// TODO Auto-generated method stub
 		ClassifierTrainer<?> trainer = new MaxEntTrainer();
-		trainer.train(this.originalData.getTrainingSet());
-		classifier = trainer.getClassifier();
-		Trial baselineResult = new Trial(classifier, this.originalData.getTestSet());
-		SimpleConfusionMatrix cm = new SimpleConfusionMatrix(baselineResult);
-		System.out.println(cm.toString());
+		SimpleConfusionMatrix cm;
+		Trial baselineResult;
+		for (LabelType labelType : LabelType.values()){
+			trainer = new MaxEntTrainer();
+			// Evaluate on the combined dimension and mapped to the original label
+			originalData.importData(labelType);
+			trainer.train(this.originalData.getTrainingSet());
+			classifier = trainer.getClassifier();
+
+			System.out.println("====== Baseline classifier performance ("+ labelType +") ======");
+			baselineResult = new Trial(classifier, this.originalData.getTestSet());
+			cm = new SimpleConfusionMatrix(baselineResult);
+			System.out.println(cm.toString());
+
+			baselineResult = new Trial(classifier, this.originalData.getDevSet());
+			cm = new SimpleConfusionMatrix(baselineResult);
+			System.out.println(cm.toString());
+		}
 		
 	}
 
@@ -57,8 +70,8 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 	public static void main(String[] args) throws JSONException, IOException {
 		// TODO Auto-generated method stub
 		CognitiveDiscourseParserBase classifier = new BaselineMaxEntModel(
-				"experiment0",
-				//args[0], 
+				//"experiment0",
+				args[0], 
 				"conll15-st-05-19-15-train", "conll15-st-05-19-15-dev", "conll15-st-05-19-15-test");
 		classifier.trainTest();
 	}

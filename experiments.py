@@ -43,9 +43,9 @@ def experiment2(mapping_file, dir_list):
 	bf = f.BrownClusterFeaturizer()
 	plf = f.LexiconBasedFeaturizer()
 	ff_list = [
-			f.is_arg1_multiple_sentences, 
-			f.first_last_first_3, f.average_vp_length, f.modality, 
-			plf.inquirer_tag_feature, 
+			#f.is_arg1_multiple_sentences, 
+			#f.first_last_first_3, f.average_vp_length, f.modality, 
+			#plf.inquirer_tag_feature, 
 			#plf.mpqa_score_feature, plf.levin_verbs, 
 			f.production_rules, bf.brown_words, bf.brown_word_pairs]
 	dimension_mapper = l.GenericMapping(mapping_file)
@@ -53,6 +53,7 @@ def experiment2(mapping_file, dir_list):
 	lf_list.append(l.OriginalLabel())
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+	prune_feature_files(dir_list[0], experiment_name, dimension_mapper.mapping_name, 5)
 
 def experiment2_1(mapping_file, dir_list):
 	experiment_name = 'experiment2.1'
@@ -61,9 +62,9 @@ def experiment2_1(mapping_file, dir_list):
 	ff_list = [
 			f.is_arg1_multiple_sentences, 
 			f.first_last_first_3, f.average_vp_length, f.modality, 
-			#plf.inquirer_tag_feature, 
-			#plf.mpqa_score_feature, plf.levin_verbs, 
-			#f.production_rules, bf.brown_words, 
+			plf.inquirer_tag_feature, 
+			plf.mpqa_score_feature, plf.levin_verbs, 
+			f.production_rules, bf.brown_words, 
 			bf.brown_word_pairs
 			]
 	dimension_mapper = l.GenericMapping(mapping_file)
