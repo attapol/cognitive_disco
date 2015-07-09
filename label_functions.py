@@ -49,7 +49,7 @@ The mapper file should be in this format
 """
 class GenericMapping(object):
 
-	def __init__(self, json_file):
+	def __init__(self, json_file, exclude_na=False):
 		self.mapping = json.load(open(json_file))
 		base_name = os.path.basename(json_file)
 		self.mapping_name = os.path.splitext(base_name)[0]
@@ -57,7 +57,7 @@ class GenericMapping(object):
 		self.dimension_set = self.validate_dimension_set(self.mapping)
 		self.dimension_to_lf = {}
 		for dimension in self.dimension_set:
-			self.dimension_to_lf[dimension] = GenericMapping.JSONLabel(self.mapping, self.mapping_name, dimension)
+			self.dimension_to_lf[dimension] = GenericMapping.JSONLabel(self.mapping, self.mapping_name, dimension, exclude_na)
 
 	def get_label_function(self, dimension):
 		return self.dimension_to_lf[dimension]
@@ -80,10 +80,11 @@ class GenericMapping(object):
 
 	class JSONLabel(LabelFunction):
 
-		def __init__(self, mapping, mapping_name, dimension):
+		def __init__(self, mapping, mapping_name, dimension, exclude_na):
 			self.mapping = mapping
 			self.mapping_name = mapping_name
 			self.dimension = dimension
+			self.exclude_na = exclude_na
 
 		def label_name(self):
 			return '%s.%s' % (self.mapping_name, self.dimension)
@@ -94,5 +95,8 @@ class GenericMapping(object):
 				print '%s NOT FOUND! Skipping' % senses[0]
 				return None
 			else:
-				return self.mapping[senses[0]][self.dimension]
-
+				label = self.mapping[senses[0]][self.dimension]
+				if self.exclude_na and label == 'n.a.':
+					return None
+				else: 
+					return label

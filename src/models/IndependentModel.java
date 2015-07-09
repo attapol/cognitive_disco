@@ -99,6 +99,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 		String[] predictedLabels;
 		String[] trueLabels;
 		Trial baselineResult;
+		SimpleConfusionMatrix cm;
 		for (LabelType labelType : LabelType.values()){
 			// Evaluate on the combined dimension and mapped to the original label
 			System.out.println("====== Dimension-based classifier performance ("+ labelType + ") ======");
@@ -107,14 +108,28 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			predictedLabels = this.classify(this.originalData.getDevFileName(), labelType);
 			//for (String s: predictedLabels) System.out.println(s);
-			SimpleConfusionMatrix cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
+			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
+			System.out.println(cm.toString());
+
+			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
+			predictedLabels = this.classify(this.originalData.getTestFileName(), labelType);
+			//for (String s: predictedLabels) System.out.println(s);
+			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
 
 			System.out.println("====== Baseline classifier performance ("+ labelType +") ======");
 			ClassifierTrainer<?> trainer = getNewTrainer();
 			trainer.train(this.originalData.getTrainingSet());
 			Classifier classifier = trainer.getClassifier();
+
+			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			baselineResult = new Trial(classifier, this.originalData.getDevSet());
+			predictedLabels = DataTriplet.getStringLabels(baselineResult);
+			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
+			System.out.println(cm.toString());
+
+			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
+			baselineResult = new Trial(classifier, this.originalData.getTestSet());
 			predictedLabels = DataTriplet.getStringLabels(baselineResult);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
