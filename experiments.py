@@ -37,6 +37,49 @@ def experiment1_1(mapping_file, dir_list):
 	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 	prune_feature_files(dir_list[0], experiment_name, dimension_mapper.mapping_name, 5)
 
+def experiment1_2(mapping_file, dir_list):
+	experiment_name = 'experiment1.2'
+	brown_featurizer = f.BrownClusterFeaturizer()
+	ff_list = [brown_featurizer.brown_word_pairs, brown_featurizer.brown_words]
+	dimension_mapper = l.GenericMapping(mapping_file)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+	prune_feature_files(dir_list[0], experiment_name, dimension_mapper.mapping_name, 5)
+
+def experiment1_3(mapping_file, dir_list):
+	""" Like 1_2 but no pruning"""
+	experiment_name = 'experiment1.3'
+	brown_featurizer = f.BrownClusterFeaturizer()
+	ff_list = [brown_featurizer.brown_word_pairs, brown_featurizer.brown_words]
+	dimension_mapper = l.GenericMapping(mapping_file)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment1_4(mapping_file, dir_list):
+	experiment_name = 'experiment1.4'
+	brown_featurizer = f.BrownClusterFeaturizer()
+	ff_list = [brown_featurizer.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+	prune_feature_files(dir_list[0], experiment_name, dimension_mapper.mapping_name, 5)
+
+def experiment1_5(mapping_file, dir_list):
+	""" Like 1_2 but no pruning"""
+	experiment_name = 'experiment1.5'
+	brown_featurizer = f.BrownClusterFeaturizer()
+	ff_list = [brown_featurizer.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 
 def experiment2(mapping_file, dir_list):
 	experiment_name = 'experiment2'
@@ -94,10 +137,29 @@ def experiment2_2(mapping_file, dir_list):
 def experiment2_3(mapping_file, dir_list):
 	"""This experiment is like 2 but we don't prune
 	"""
-	experiment_name = 'experiment2.2'
+	experiment_name = 'experiment2.3'
 	bf = f.BrownClusterFeaturizer()
 	plf = f.LexiconBasedFeaturizer()
 	ff_list = [
+			f.production_rules, bf.brown_words, bf.brown_word_pairs
+			]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment2_4(mapping_file, dir_list):
+	"""This experiment is like 2.2 but we don't prune
+	"""
+	experiment_name = 'experiment2.4'
+	bf = f.BrownClusterFeaturizer()
+	plf = f.LexiconBasedFeaturizer()
+	ff_list = [
+			f.is_arg1_multiple_sentences, 
+			f.first_last_first_3, f.average_vp_length, f.modality, 
+			plf.inquirer_tag_feature, 
+			plf.mpqa_score_feature, plf.levin_verbs, 
 			f.production_rules, bf.brown_words, bf.brown_word_pairs
 			]
 	dimension_mapper = l.GenericMapping(mapping_file, True)
@@ -134,7 +196,10 @@ if __name__ == '__main__':
 	#execute the function named 'experiment_name'
 	experiment_name = sys.argv[1]
 	mapping_file = sys.argv[2]
-	dir_list = sys.argv[3:]
+	if len(sys.argv) < 4:
+		dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+	else:
+		dir_list = sys.argv[3:]
 	globals()[experiment_name](mapping_file, dir_list)
 
 

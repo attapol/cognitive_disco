@@ -41,7 +41,12 @@ public class MaxEntModel {
 
 	public static void main(String[] args) throws FileNotFoundException {
 		//MaxEntModel maxEnt = new MaxEntModel(args[0], args[1], args[2]);
-		MaxEntModel maxEnt = new MaxEntModel(args[0]);
+		MaxEntModel maxEnt;
+		if (args.length > 1) {
+			maxEnt = new MaxEntModel(args[0], args[1], args[2]);	
+		} else {
+			maxEnt = new MaxEntModel(args[0]);
+		}
 		maxEnt.trainTest();
 	}
 
