@@ -55,6 +55,21 @@ public class DataTriplet {
 	public InstanceList getTestSet() throws FileNotFoundException { 
 		return testSet; 
 	}
+
+	/*
+	 * Import data from the raw file name. No fancy mapping
+	 * This is useful for a normal classification task in general.
+	 */
+	public void importData() throws FileNotFoundException{
+		importData(trainingFileName, devFileName, testFileName, null);
+	}
+
+	/*
+	 * Import data and convert the original sense label to the specified label type.
+	 */
+	public void importData(LabelType labelType) throws FileNotFoundException{
+		importData(trainingFileName, devFileName, testFileName, labelType);
+	}
 	
 	public void importData(String trainingFileName, 
 			String devFileName, String testFileName, LabelType labelType) throws FileNotFoundException{
@@ -70,18 +85,11 @@ public class DataTriplet {
 		testSet = importData(testFileName, trainingSet.getPipe());
 
 	}
-	public void importData(LabelType labelType) throws FileNotFoundException{
-		importData(trainingFileName, devFileName, testFileName, labelType);
-	}
-
-	public void importData() throws FileNotFoundException{
-		importData(trainingFileName, devFileName, testFileName, null);
-	}
-
 	
 	public static InstanceList importData(String fileName, Pipe pipe) throws FileNotFoundException {
 		return importData(fileName, null, pipe, null);
 	}
+
 	public static InstanceList importData(String dataFile, LabelType labelType) throws FileNotFoundException {
 		return importData(dataFile, labelType, null);
 	}
@@ -90,29 +98,6 @@ public class DataTriplet {
 			Alphabet alphabet) throws FileNotFoundException {
 		return importData(dataFile, labelType, null, alphabet);
 	}	
-	
-	public static Pipe getPipe(LabelType labelType) {
-		ArrayList<Pipe> pipes = new ArrayList<Pipe>();
-		pipes.add(new Csv2FeatureVector());
-		if (labelType == null){
-			pipes.add(new Target2Label());
-		}else {
-			switch (labelType){
-			case CONLL:
-				pipes.add(new Target2CoNLLLabel());
-				break;
-			case TOP_LEVEL:
-				pipes.add(new Target2TopLevelLabel());
-				break;
-			case SCHEME_B:
-				pipes.add(new Target2SchemeBLabel());
-				break;
-			}
-		}
-		Pipe pipe = new SerialPipes(pipes);
-		pipe.setTargetProcessing(true);
-		return pipe;
-	}
 
 	/* Import data (used for multiple datasets settings)
 	 * 
@@ -139,6 +124,30 @@ public class DataTriplet {
 		
 		return data;
 	}
+	
+	public static Pipe getPipe(LabelType labelType) {
+		ArrayList<Pipe> pipes = new ArrayList<Pipe>();
+		pipes.add(new Csv2FeatureVector());
+		if (labelType == null){
+			pipes.add(new Target2Label());
+		}else {
+			switch (labelType){
+			case CONLL:
+				pipes.add(new Target2CoNLLLabel());
+				break;
+			case TOP_LEVEL:
+				pipes.add(new Target2TopLevelLabel());
+				break;
+			case SCHEME_B:
+				pipes.add(new Target2SchemeBLabel());
+				break;
+			}
+		}
+		Pipe pipe = new SerialPipes(pipes);
+		pipe.setTargetProcessing(true);
+		return pipe;
+	}
+
 	
 	public static String[] getStringLabels(InstanceList data) {
 		int numInstances = data.size();
