@@ -105,15 +105,15 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 			System.out.println("====== Dimension-based classifier performance ("+ labelType + ") ======");
 			this.originalData.importData(labelType);
 
+			System.out.println("Developement Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			predictedLabels = this.classify(this.originalData.getDevFileName(), labelType);
-			//for (String s: predictedLabels) System.out.println(s);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
 
+			System.out.println("Test Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
 			predictedLabels = this.classify(this.originalData.getTestFileName(), labelType);
-			//for (String s: predictedLabels) System.out.println(s);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
 
@@ -122,12 +122,14 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 			trainer.train(this.originalData.getTrainingSet());
 			Classifier classifier = trainer.getClassifier();
 
+			System.out.println("Developement Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			baselineResult = new Trial(classifier, this.originalData.getDevSet());
 			predictedLabels = DataTriplet.getStringLabels(baselineResult);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			System.out.println(cm.toString());
 
+			System.out.println("Test Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
 			baselineResult = new Trial(classifier, this.originalData.getTestSet());
 			predictedLabels = DataTriplet.getStringLabels(baselineResult);

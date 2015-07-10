@@ -15,6 +15,7 @@ import cc.mallet.pipe.Target2Label;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.Alphabet;
 import cc.mallet.types.InstanceList;
+import cc.mallet.types.LabelVector;
 
 /*
  * Holds a triplet of training, development, test sets that use the same set of features

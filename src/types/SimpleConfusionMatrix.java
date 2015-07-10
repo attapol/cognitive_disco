@@ -61,7 +61,7 @@ public class SimpleConfusionMatrix{
 	}
 	
 	private static Alphabet makeAlphabet(String[] trueLabels) {
-		List<String> allLabel = Arrays.asList(trueLabels);
+		List<String> allLabel = Arrays.asList(trueLabels.clone());
 		allLabel.sort(null);
 		
 		Alphabet labelAlphabet = new Alphabet();
