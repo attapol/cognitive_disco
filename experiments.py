@@ -18,6 +18,15 @@ def experiment0(mapping_file, dir_list):
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, 'experiment0')
 
+def experiment0_5(mapping_file, dir_list):
+	"""Trying to have four way baseline of 55% accuracy..."""
+	experiment_name = 'experiment0.5'
+	brown_featurizer = f.BrownClusterFeaturizer()
+	ff_list = [brown_featurizer.brown_word_pairs]
+	lf_list = [l.TopLevelLabel()]
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
 def experiment1(mapping_file, dir_list):
 	brown_featurizer = f.BrownClusterFeaturizer()
 	ff_list = [brown_featurizer.brown_word_pairs, f.production_rules]

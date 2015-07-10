@@ -28,7 +28,7 @@ class OriginalLabel(LabelFunction):
 class TopLevelLabel(LabelFunction):
 
 	def label_name(self):
-		return 'original_label'
+		return 'top_level_label'
 
 	def label(self, drelation):
 		senses = drelation.senses

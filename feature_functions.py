@@ -345,15 +345,16 @@ class BrownClusterFeaturizer(object):
 		except:
 			print 'fail to load brown cluster data'
 
-	def get_cluster_assignment(self, word):
-		if word in self.word_to_brown_mapping:
-			return self.word_to_brown_mapping[word]
-		else:
-			return 'UNK'
+	def get_cluster_bag(self, tokens):
+		bag = set()
+		for token in tokens:
+			if token in self.word_to_brown_mapping:
+				bag.add(self.word_to_brown_mapping[token])
+		return bag
 
 	def brown_words(self, relation):
-		arg1_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg_tokens(1)])
-		arg2_brown_words = set([self.get_cluster_assignment(x) for x in relation.arg_tokens(2)])
+		arg1_brown_words = self.get_cluster_bag(relation.arg_tokens(1))
+		arg2_brown_words = self.get_cluster_bag(relation.arg_tokens(2))
 		arg1_only = arg1_brown_words - arg2_brown_words
 		arg2_only = arg2_brown_words - arg1_brown_words
 		both_args = arg1_brown_words.intersection(arg2_brown_words)
@@ -375,12 +376,11 @@ class BrownClusterFeaturizer(object):
 
 		"""
 		feature_vector = []
-		for arg1_token in relation.arg_tokens(1):
-			arg1_assn = self.get_cluster_assignment(arg1_token)
-			for arg2_token in relation.arg_tokens(2):
-				arg2_assn = self.get_cluster_assignment(arg2_token)
+		arg1_brown_words = self.get_cluster_bag(relation.arg_tokens(1))
+		arg2_brown_words = self.get_cluster_bag(relation.arg_tokens(2))
+		for arg1_assn in arg1_brown_words:
+			for arg2_assn in arg2_brown_words:
 				feature = 'BP_%s_%s' % (arg1_assn, arg2_assn)
-				feature = re.sub(':','COLON', feature)
 				feature_vector.append(feature)
 		return feature_vector
 
