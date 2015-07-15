@@ -77,6 +77,10 @@ class DRelation(object):
 	def relation_id(self):
 		return self.relation_dict['ID']
 
+	@property
+	def doc_relation_id(self):
+		return '%s_%s' % (self.doc_id, self.relation_id)
+
 	def arg_tokens(self, arg_pos):
 		assert(arg_pos == 1 or arg_pos == 2)
 		if self._arg_tokens[arg_pos] is None:
