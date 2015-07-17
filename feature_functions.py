@@ -191,6 +191,28 @@ def _get_production_rules(parse_tree, token_indices):
 		#pass
 	return rule_set
 
+def _vector_based_feature(vector, prefix):
+	feature_vector = []
+	for i, x in enumerate(vector):
+		feature_vector.append('%s%s:%s' (prefix,i,x)
+	return feature_vector
+
+def dssm_feature(relation):
+	feature_vector = []
+	feature_vector.extend(_vector_based_feature(relation['Arg1']['DSSMTarget'], 'DSTArg1'))
+	feature_vector.extend(_vector_based_feature(relation['Arg2']['DSSMTarget'], 'DSTArg2'))
+	feature_vector.extend(_vector_based_feature(relation['Arg1']['DSSMSource'], 'DSSArg1'))
+	feature_vector.extend(_vector_based_feature(relation['Arg2']['DSSMSource'], 'DSSArg2'))
+	return feature_vector
+
+def cdssm_feature(relation):
+	feature_vector = []
+	feature_vector.extend(_vector_based_feature(relation['Arg1']['CDSSMTarget'], 'CDSTArg1'))
+	feature_vector.extend(_vector_based_feature(relation['Arg2']['CDSSMTarget'], 'CDSTArg2'))
+	feature_vector.extend(_vector_based_feature(relation['Arg1']['CDSSMSource'], 'CDSSArg1'))
+	feature_vector.extend(_vector_based_feature(relation['Arg2']['CDSSMSource'], 'CDSSArg2'))
+	return feature_vector
+
 class LexiconBasedFeaturizer(object):
 	def __init__(self):
 		home = os.path.expanduser('~')

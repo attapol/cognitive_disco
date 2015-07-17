@@ -20,6 +20,7 @@ class LengthFeaturizer(object):
 		"""
 		self.relations = extract_implicit_relations(training_dir)
 		self.mean_length_char, self.mean_length_word = self._compute_mean_length()
+		print self.mean_length_char, self.mean_length_word
 		self.cache_chars = {}
 		self.cache_words = {}
 	
@@ -36,7 +37,7 @@ class LengthFeaturizer(object):
 				sum_length_char += len(token)
 			sum_length_word += len(tokens)
 		num_relations = len(self.relations)
-		return sum_length_char * 2 / num_relations, sum_length_word * 2 / num_relations	
+		return sum_length_char / (2 * num_relations), sum_length_word / (2 * num_relations)
 
 
 	def _length_char_wrapper(self, relation):

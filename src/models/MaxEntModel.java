@@ -34,7 +34,7 @@ public class MaxEntModel {
 		trainer.train(data.getTrainingSet());
 		MaxEnt classifier = (MaxEnt) trainer.getClassifier();
 		PrintWriter pw = new PrintWriter(System.out);
-		classifier.print(pw);
+		//classifier.print(pw);
 		classifier.printRank(pw);
 		pw.flush();
 		
