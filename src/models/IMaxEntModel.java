@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.json.JSONException;
 
+import types.ResultWriter;
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.MaxEntTrainer;
 
@@ -13,6 +14,7 @@ public class IMaxEntModel extends IndependentModel {
 			String trainingDir, String devDir, String testDir)
 			throws JSONException, IOException {
 		super(experimentName, mappingJson, trainingDir, devDir, testDir);
+		writer = new ResultWriter("imaxent."+experimentName+"."+dm.getMappingName()+".json");
 	}
 	
 	/**

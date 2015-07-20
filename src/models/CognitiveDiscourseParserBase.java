@@ -9,6 +9,7 @@ import org.json.JSONException;
 import types.DataTriplet;
 import types.DimensionMapper;
 import types.LabelType;
+import types.ResultWriter;
 import types.SimpleConfusionMatrix;
 
 public abstract class CognitiveDiscourseParserBase {
@@ -16,6 +17,7 @@ public abstract class CognitiveDiscourseParserBase {
 	protected DimensionMapper dm = new DimensionMapper();
 	protected DataTriplet[] data;
 	protected DataTriplet originalData;
+	public ResultWriter writer;
 	
 
 	
@@ -60,7 +62,7 @@ public abstract class CognitiveDiscourseParserBase {
 	 * Train on the training set and test on the dev set 
 	 * Print out the results in a confusion matrix and overall accuracy
 	 */
-	abstract public void trainTest() throws FileNotFoundException;
+	abstract public void trainTest() throws FileNotFoundException, JSONException;
 	
 	/*
 	 * This will read in the feature file 

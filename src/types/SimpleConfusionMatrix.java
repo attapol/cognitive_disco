@@ -52,21 +52,11 @@ public class SimpleConfusionMatrix{
 			}	
 		}
 	}
-	
 	public SimpleConfusionMatrix(Alphabet dict, int[][] matrixValues)
 	{
 		values = matrixValues;
 		numClasses = matrixValues.length;
 		labelAlphabet = dict;
-	}
-	
-	private static Alphabet makeAlphabet(String[] trueLabels) {
-		List<String> allLabel = Arrays.asList(trueLabels.clone());
-		allLabel.sort(null);
-		
-		Alphabet labelAlphabet = new Alphabet();
-		for (String label : allLabel) labelAlphabet.lookupIndex(label); 
-		return labelAlphabet;
 	}
 	
 	public SimpleConfusionMatrix(String[] trueLabels, String[] predictedLabels)
@@ -91,6 +81,16 @@ public class SimpleConfusionMatrix{
 	{
 		this(new Trial[]{trial});
 	}
+
+	private static Alphabet makeAlphabet(String[] trueLabels) {
+		List<String> allLabel = Arrays.asList(trueLabels.clone());
+		allLabel.sort(null);
+		
+		Alphabet labelAlphabet = new Alphabet();
+		for (String label : allLabel) labelAlphabet.lookupIndex(label); 
+		return labelAlphabet;
+	}
+	
 
 	public Alphabet getLabelAlphabet(){
 		return labelAlphabet;
@@ -190,21 +190,6 @@ public class SimpleConfusionMatrix{
 		return round(f1, 4);
 	}
 	
-	public double getMacroAverageF1(){
-		double[] F1s = getAllF1();
-		double sumF1 = 0.0;
-		for (double F1 : F1s) sumF1 += F1;
-		return sumF1 / F1s.length;
-	}
-
-	public double[] getAllF1(){
-		double[] results = new double[numClasses];
-		for (int i = 0; i < results.length; i++){
-			results[i] = getF1(i);
-		}
-		return results;
-	}
-	
 	public int getNumClasses(){
 		return numClasses;
 	}
@@ -245,44 +230,46 @@ public class SimpleConfusionMatrix{
 	}
 	
 	/*
-	 * Returns the json string with performance report
+	 * Returns the json with performance report
+	 * 
 	 * For example, 
 	 * "{ 'class1' : { 'precision' : 0.1234, 'recall' : 0.4321, 'f1' : 0.3421 } 
 	 * 	 'class2' : { 'precision' : 0.1234, 'recall' : 0.4321, 'f1' : 0.3421 } 
-	 * 	 'overall' : { 'accuracy' : 0.1234, 'f1' : 0.4321}
+	 * 	 'overall' : { 'accuracy' : 0.1234, 'baseline accuracy' : 0.4321}
 	 * }"
 	 */
-	public String getPerformanceReportJson() throws JSONException {
-		JSONObject dict = new JSONObject();
-		double accuracy = getAccuracy();
-		double macroF1 = 0.0;
-		double microF1 = 0.0;
-		int datasetSize = 0;
+	public JSONObject toJson() throws JSONException {
+		JSONObject classwise = new JSONObject();
 		for (int i = 0; i < labelAlphabet.size(); i++){
 			String labelName = (String) labelAlphabet.lookupObject(i);
 			double precision = getPrecision(i); double recall = getRecall(i);
-			double f1 = 0.0;
-			if (precision + recall != 0)
-				f1 = 2*(precision * recall)/(precision + recall);
+			double f1 = getF1(i);
 			
 			JSONObject metricDict = new JSONObject();
 			metricDict.put("precision", round(precision,4));
 			metricDict.put("recall", round(recall, 4));
 			metricDict.put("f1", round(f1, 4));
-			macroF1 += f1;
-			int numClassOccurrences = getNumOccurrences(i);
-			microF1 += f1 * numClassOccurrences;
-			datasetSize += numClassOccurrences;
-			dict.put(labelName, metricDict);
+			classwise.put(labelName, metricDict);
 		}
-		macroF1 = macroF1 / labelAlphabet.size();
-		microF1 = microF1 / datasetSize;
+		double[] distribution = new double[values.length];
+		String[] labelNames = new String[values.length];
+		for (int i = 0; i < distribution.length; i++) {
+			distribution[i] = MatrixOps.sum(values[i]);
+			labelNames[i] = (String) labelAlphabet.lookupObject(i);
+		}
+		double baselineAccuracy = MatrixOps.max(distribution) / MatrixOps.sum(distribution);
+
 		JSONObject metricDict = new JSONObject();
-		metricDict.put("accuracy", round(accuracy,4));
-		metricDict.put("macro-f1", round(macroF1,4));
-		metricDict.put("micro-f1", round(microF1,4));
+		metricDict.put("accuracy", getAccuracy());
+		metricDict.put("baseline accuracy", baselineAccuracy);
+		metricDict.put("distribution", distribution);
+		metricDict.put("labels", labelNames);
+
+		JSONObject dict = new JSONObject();
 		dict.put("overall", metricDict);
-		return dict.toString();
+		dict.put("matrix", values);
+		dict.put("classwise", classwise);
+		return dict;
 	}
 	
 	public String getMatrixString(){
@@ -338,7 +325,7 @@ public class SimpleConfusionMatrix{
 			sb.append (""+i);
 	}
 	
-	public static void main(String[] args){
+	public static void main(String[] args) throws JSONException{
 		/*
 		 * Testing the merging function
 		 */
@@ -364,6 +351,7 @@ public class SimpleConfusionMatrix{
 		
 		cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 		System.out.println(cm.toString());
+		System.out.println(cm.toJson().toString());
 	}
 
 }

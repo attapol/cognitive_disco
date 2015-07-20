@@ -20,7 +20,6 @@ public class DimensionMapper {
 	private String mappingName;
 	private HashMap<ArrayList<String>, HashSet<Sense> > dimensionsToSense = new HashMap<ArrayList<String>, HashSet<Sense>>();
 	
-	
 	public DimensionMapper() {
 		
 	}
@@ -57,6 +56,13 @@ public class DimensionMapper {
 		
 	}
 	
+	public String getDimensionName(int index){
+		return dimensions.get(index);
+	}
+	
+	public String getMappingName() {
+		return mappingName;
+	}
 	public String getLabel(ArrayList<String> dimensions, LabelType labelType) {
 		HashSet<Sense> senses = this.dimensionsToSense.get(dimensions);
 		HashSet<String> labelSet = new HashSet<String>();
