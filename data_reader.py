@@ -68,7 +68,6 @@ class DRelation(object):
 		key = 'Arg%s' % arg_pos
 		return self.relation_dict[key]['TokenList']	
 
-
 	@property
 	def doc_id(self):
 		return self.relation_dict['DocID']
@@ -94,6 +93,7 @@ class DRelation(object):
 		token_list = self.relation_dict[key]['TokenList']	
 		sentence_indices = set([x[3] for x in token_list])
 		return [self.parse[self.doc_id]['sentences'][x]['parsetree'] for x in sentence_indices], list(sentence_indices)
+
 
 	def __repr__(self):
 		return self.relation_dict.__repr__()
@@ -131,7 +131,7 @@ def extract_implicit_relations(data_folder):
 	parse_file = '%s/pdtb-parses-plus.json' % data_folder
 	parse = json.load(open(parse_file))
 
-	relation_file = '%s/pdtb-data.json' % data_folder
+	relation_file = '%s/pdtb-data-plus.json' % data_folder
 	relation_dicts = [json.loads(x) for x in open(relation_file)]
 	relations = [DRelation(x, parse) for x in relation_dicts if x['Type'] == 'Implicit']
 	return relations

@@ -177,6 +177,73 @@ def experiment2_4(mapping_file, dir_list):
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 
+"""Experiment 4 series tests out the DSSM features
+
+Experiment 3 series disappeared from this file for some reason although
+we had the experiment results. Just don't lose those or you will have to
+code up experiment 3 again, which is really not a big deal...
+"""
+def experiment4_0(mapping_file, dir_list):
+	experiment_name = 'experiment4.0'
+	ff_list = [f.dssm_feature, f.cdssm_feature]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment4_1(mapping_file, dir_list):
+	experiment_name = 'experiment4.1'
+	ff_list = [f.dssm_feature]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment4_2(mapping_file, dir_list):
+	experiment_name = 'experiment4.2'
+	ff_list = [f.cdssm_feature]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment4_0_1(mapping_file, dir_list):
+	experiment_name = 'experiment4.0.1'
+	bf = f.BrownClusterFeaturizer()
+	ff_list = [f.dssm_feature, f.cdssm_feature,
+			f.production_rules, bf.brown_words, bf.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment4_1_1(mapping_file, dir_list):
+	experiment_name = 'experiment4.1.1'
+	bf = f.BrownClusterFeaturizer()
+	ff_list = [f.dssm_feature, 
+			f.production_rules, bf.brown_words, bf.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+def experiment4_2_1(mapping_file, dir_list):
+	experiment_name = 'experiment4.2.1'
+	bf = f.BrownClusterFeaturizer()
+	ff_list = [f.cdssm_feature, 
+			f.production_rules, bf.brown_words, bf.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+
 def prune_feature_files(training_dir, experiment_name, mapping_name, cutoff):
 	file_patterns = '%s/%s.%s.*' % (training_dir, experiment_name, mapping_name)
 	files = glob.glob(file_patterns)
