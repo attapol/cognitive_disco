@@ -15,7 +15,6 @@ import cc.mallet.pipe.Target2Label;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.Alphabet;
 import cc.mallet.types.InstanceList;
-import cc.mallet.types.LabelVector;
 
 /*
  * Holds a triplet of training, development, test sets that use the same set of features
@@ -29,6 +28,7 @@ public class DataTriplet {
 	private String trainingFileName;
 	private String devFileName;
 	private String testFileName;
+	private int numFeatures;
 	
 	public DataTriplet(String trainingFileName, String devFileName, String testFileName) {
 		this.setTrainingFileName(trainingFileName);
@@ -56,27 +56,32 @@ public class DataTriplet {
 	public InstanceList getTestSet() throws FileNotFoundException { 
 		return testSet; 
 	}
+	
+	public int getNumFeatures() {
+		return this.numFeatures;
+	}
 
 	/*
 	 * Import data from the raw file name. No fancy mapping
 	 * This is useful for a normal classification task in general.
 	 */
-	public void importData() throws FileNotFoundException{
-		importData(trainingFileName, devFileName, testFileName, null);
+	public int importData() throws FileNotFoundException{
+		return importData(trainingFileName, devFileName, testFileName, null);
 	}
 
 	/*
 	 * Import data and convert the original sense label to the specified label type.
 	 */
-	public void importData(LabelType labelType) throws FileNotFoundException{
-		importData(trainingFileName, devFileName, testFileName, labelType);
+	public int importData(LabelType labelType) throws FileNotFoundException{
+		return importData(trainingFileName, devFileName, testFileName, labelType);
 	}
 	
-	public void importData(String trainingFileName, 
+	public int importData(String trainingFileName, 
 			String devFileName, String testFileName, LabelType labelType) throws FileNotFoundException{
 
 		System.out.println("Reading training set :" + trainingFileName);
 		trainingSet = importData(trainingFileName, labelType);
+		int numFeatures = trainingSet.getDataAlphabet().size();
 		System.out.println("Using " + trainingSet.getAlphabet().size() + " features.");
 		
 		System.out.println("Reading dev set :" + devFileName);
@@ -84,7 +89,8 @@ public class DataTriplet {
 		
 		System.out.println("Reading test set :" + testFileName);
 		testSet = importData(testFileName, trainingSet.getPipe());
-
+		this.numFeatures = numFeatures;
+		return numFeatures;
 	}
 	
 	public static InstanceList importData(String fileName, Pipe pipe) throws FileNotFoundException {

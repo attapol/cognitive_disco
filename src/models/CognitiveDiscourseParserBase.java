@@ -14,7 +14,7 @@ import types.SimpleConfusionMatrix;
 
 public abstract class CognitiveDiscourseParserBase {
 
-	protected DimensionMapper dm = new DimensionMapper();
+	protected DimensionMapper dm;
 	protected DataTriplet[] data;
 	protected DataTriplet originalData;
 	public ResultWriter writer;
@@ -27,7 +27,9 @@ public abstract class CognitiveDiscourseParserBase {
 	
 	public CognitiveDiscourseParserBase(String experimentName, String mappingJson, String trainingDir, String devDir, String testDir) throws JSONException, IOException{
 		dm = new DimensionMapper(mappingJson);
-		System.out.println(dm.toString());
+
+		writer = new ResultWriter(getModelName()+"."+experimentName+"."+dm.getMappingName());
+		writer.logln(dm.toString());
 		data = new DataTriplet[dm.numDimensions()];
 		ArrayList<String> dimensions = dm.getDimensions();
 		for (int i = 0; i < dimensions.size(); i++){
@@ -35,6 +37,7 @@ public abstract class CognitiveDiscourseParserBase {
 			data[i] = loadData(experimentName, dimension, trainingDir, devDir, testDir);
 		}
 		originalData = loadOriginalData(experimentName, trainingDir, devDir, testDir);
+
 	}
 	
 	protected DataTriplet loadOriginalData(String experimentName,
@@ -55,9 +58,10 @@ public abstract class CognitiveDiscourseParserBase {
 	
 	public void evaluate(String[] trueLabels, String[] predictedLabels){
 		SimpleConfusionMatrix cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
-		System.out.println(cm.toString());
+		writer.logln(cm.toString());
 	}
-	
+
+	abstract public String getModelName();
 	/*
 	 * Train on the training set and test on the dev set 
 	 * Print out the results in a confusion matrix and overall accuracy

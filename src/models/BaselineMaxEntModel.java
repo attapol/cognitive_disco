@@ -76,6 +76,12 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 		classifier.trainTest();
 	}
 
+	@Override
+	public String getModelName() {
+		// TODO Auto-generated method stub
+		return "maxent";
+	}
+
 
 
 }

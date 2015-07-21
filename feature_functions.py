@@ -9,9 +9,14 @@ the implementation should move to the methods not in the feature functions.
 import json
 import os
 import re
+import random
 from nltk.tree import Tree
-from scipy.constants.constants import neutron_mass
 
+def random_feature(relation):
+	return ['RANDOM:%s' % random.random()]
+
+def first_word(relation):
+	return [relation.arg_tokens(1)[0]]
 
 def first3(relation):
 	feature_vector = []
