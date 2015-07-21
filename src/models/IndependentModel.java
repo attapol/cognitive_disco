@@ -98,6 +98,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 
 			trial = new Trial(classifiers[i], this.data[i].getDevSet());
 			scm = new SimpleConfusionMatrix(trial);
+			writer.logln("Development Set Results:");
 			writer.logln(scm.toString());
 			extraInfo.put("data", this.data[i].getDevFileName()); 
 			extraInfo.put("task", dm.getDimensionName(i));
@@ -107,6 +108,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 
 			trial = new Trial(classifiers[i], this.data[i].getTestSet());
 			scm = new SimpleConfusionMatrix(trial);
+			writer.logln("Test Set Results:");
 			writer.logln(scm.toString());
 			extraInfo.put("data", this.data[i].getTestFileName()); 
 			extraInfo.put("task", dm.getDimensionName(i));
