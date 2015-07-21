@@ -3,13 +3,13 @@ package models;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.json.JSONException;
 
 import types.DataTriplet;
 import types.LabelType;
 import types.SimpleConfusionMatrix;
-import cc.mallet.classify.evaluate.ConfusionMatrix;
 import cc.mallet.classify.Classifier;
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.Trial;
@@ -76,7 +76,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 	}
 
 	
-	public void trainTest() throws FileNotFoundException{
+	public void trainTest() throws FileNotFoundException, JSONException{
 		// Train on each dimension
 		int numDimensions = this.data.length;
 		Trial[] trials = new Trial[numDimensions];
@@ -90,10 +90,30 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 		}
 		
 		// Evaluate on each dimension individually
-		System.out.println("====== Individual classifier performance ======");
-		for (Trial trial : trials){
-			ConfusionMatrix cm = new ConfusionMatrix(trial);
-			System.out.println(cm.toString());
+		writer.logln("====== Individual classifier performance ======");
+		Trial trial;
+		SimpleConfusionMatrix scm;
+		for (int i = 0; i < numDimensions; i++){
+			HashMap<String, Object> extraInfo = new HashMap<String, Object>();
+
+			trial = new Trial(classifiers[i], this.data[i].getDevSet());
+			scm = new SimpleConfusionMatrix(trial);
+			writer.logln(scm.toString());
+			extraInfo.put("data", this.data[i].getDevFileName()); 
+			extraInfo.put("task", dm.getDimensionName(i));
+			extraInfo.put("set", "dev");
+			extraInfo.put("num features", this.data[i].getNumFeatures() );
+			writer.write(scm, extraInfo);
+
+			trial = new Trial(classifiers[i], this.data[i].getTestSet());
+			scm = new SimpleConfusionMatrix(trial);
+			writer.logln(scm.toString());
+			extraInfo.put("data", this.data[i].getTestFileName()); 
+			extraInfo.put("task", dm.getDimensionName(i));
+			extraInfo.put("set", "test");
+			extraInfo.put("num features", this.data[i].getNumFeatures() );
+			writer.write(scm, extraInfo);
+			
 		}
 		
 		String[] predictedLabels;
@@ -102,41 +122,62 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 		SimpleConfusionMatrix cm;
 		for (LabelType labelType : LabelType.values()){
 			// Evaluate on the combined dimension and mapped to the original label
-			System.out.println("====== Dimension-based classifier performance ("+ labelType + ") ======");
+			writer.logln("====== Dimension-based classifier performance ("+ labelType + ") ======");
 			this.originalData.importData(labelType);
+			HashMap<String, Object> extraInfo = new HashMap<String, Object>();
 
-			System.out.println("Developement Set Results:");
+			writer.logln("Development Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			predictedLabels = this.classify(this.originalData.getDevFileName(), labelType);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
-			System.out.println(cm.toString());
+			writer.logln(cm.toString());
+			extraInfo.put("data", this.originalData.getDevFileName());
+			extraInfo.put("task", labelType.toString());
+			extraInfo.put("set", "dev");
+			extraInfo.put("approach", "dimension-based");
+			writer.write(cm, extraInfo);
 
-			System.out.println("Test Set Results:");
+			writer.logln("Test Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
 			predictedLabels = this.classify(this.originalData.getTestFileName(), labelType);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
-			System.out.println(cm.toString());
+			writer.logln(cm.toString());
+			extraInfo.put("data", this.originalData.getTestFileName());
+			extraInfo.put("task", labelType.toString());
+			extraInfo.put("set", "test");
+			extraInfo.put("approach", "dimension-based");
+			writer.write(cm, extraInfo);
 
-			System.out.println("====== Baseline classifier performance ("+ labelType +") ======");
+			writer.logln("====== Baseline classifier performance ("+ labelType +") ======");
 			ClassifierTrainer<?> trainer = getNewTrainer();
 			trainer.train(this.originalData.getTrainingSet());
 			Classifier classifier = trainer.getClassifier();
 
-			System.out.println("Developement Set Results:");
+			writer.logln("Development Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getDevSet());
 			baselineResult = new Trial(classifier, this.originalData.getDevSet());
 			predictedLabels = DataTriplet.getStringLabels(baselineResult);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
-			System.out.println(cm.toString());
+			extraInfo.put("data", this.originalData.getDevFileName());
+			extraInfo.put("task", labelType.toString());
+			extraInfo.put("num features", this.originalData.getNumFeatures());
+			extraInfo.put("approach", "flat");
+			writer.write(cm, extraInfo);
+			writer.logln(cm.toString());
 
-			System.out.println("Test Set Results:");
+			writer.logln("Test Set Results:");
 			trueLabels = DataTriplet.getStringLabels(this.originalData.getTestSet());
 			baselineResult = new Trial(classifier, this.originalData.getTestSet());
 			predictedLabels = DataTriplet.getStringLabels(baselineResult);
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
-			System.out.println(cm.toString());
+			extraInfo.put("data", this.originalData.getTestFileName());
+			extraInfo.put("task", labelType.toString());
+			extraInfo.put("num features", this.originalData.getNumFeatures());
+			extraInfo.put("approach", "flat");
+			writer.write(cm, extraInfo);
+			writer.logln(cm.toString());
 
 		}
-		
+		writer.close();
 	}
 }

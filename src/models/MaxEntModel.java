@@ -3,8 +3,6 @@ package models;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 
-import cc.mallet.classify.Classifier;
-import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.MaxEnt;
 import cc.mallet.classify.MaxEntTrainer;
 import cc.mallet.classify.Trial;

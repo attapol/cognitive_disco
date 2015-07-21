@@ -15,6 +15,7 @@ public class IMaxEntModel extends IndependentModel {
 		super(experimentName, mappingJson, trainingDir, devDir, testDir);
 	}
 	
+	
 	/**
 	 * @param args
 	 * @throws IOException 
@@ -30,6 +31,12 @@ public class IMaxEntModel extends IndependentModel {
 	
 	public ClassifierTrainer<?> getNewTrainer() {
 		return new MaxEntTrainer();
+	}
+
+
+	@Override
+	public String getModelName() {
+		return "imaxent";
 	}
 
 

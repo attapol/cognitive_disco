@@ -11,7 +11,7 @@ from prune_features import prune_features
 
 def experiment0(mapping_file, dir_list):
 	#ff_list = [f.bag_of_words]
-	ff_list = [f.first3]
+	ff_list = [f.random_feature, f.first_word]
 	dimension_mapper = l.GenericMapping(mapping_file)
 	lf_list = dimension_mapper.get_all_label_functions()
 	lf_list.append(l.OriginalLabel())
