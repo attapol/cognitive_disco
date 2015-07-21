@@ -243,6 +243,15 @@ def experiment4_2_1(mapping_file, dir_list):
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 
+def experiment4_3(mapping_file, dir_list):
+	experiment_name = 'experiment4.3'
+	bf = f.BrownClusterFeaturizer()
+	ff_list = [ f.production_rules, bf.brown_words, bf.brown_word_pairs]
+	dimension_mapper = l.GenericMapping(mapping_file, True)
+	lf_list = dimension_mapper.get_all_label_functions()
+	lf_list.append(l.OriginalLabel())
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 
 def prune_feature_files(training_dir, experiment_name, mapping_name, cutoff):
 	file_patterns = '%s/%s.%s.*' % (training_dir, experiment_name, mapping_name)
