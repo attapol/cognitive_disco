@@ -2,7 +2,7 @@ import sys
 import glob
 
 import feature_functions as f
-import label_functions as l
+import base_label_functions as l
 
 from naming_functions import doc_id_relation_id_nf
 from feature_file_generator import generate_feature_files 

@@ -31,10 +31,10 @@ public class MaxEntModel {
 
 		trainer.train(data.getTrainingSet());
 		MaxEnt classifier = (MaxEnt) trainer.getClassifier();
-		PrintWriter pw = new PrintWriter(System.out);
+		//PrintWriter pw = new PrintWriter(System.out);
 		//classifier.print(pw);
-		classifier.printRank(pw);
-		pw.flush();
+		//classifier.printRank(pw);
+		//pw.flush();
 		
 		Trial devResult = new Trial(classifier, data.getDevSet());
 		Trial testResult = new Trial(classifier, data.getTestSet());

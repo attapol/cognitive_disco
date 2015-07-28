@@ -1,6 +1,6 @@
 from codecs import open as copen
 from data_reader import extract_implicit_relations
-from label_functions import OriginalLabel
+from base_label_functions import OriginalLabel
 
 def generate_feature_files(dir_list, ff_list, lf, nf, prefix):
 	for dir in dir_list:
