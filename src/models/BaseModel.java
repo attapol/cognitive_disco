@@ -30,9 +30,8 @@ public abstract class BaseModel {
 	
 	public abstract ClassifierTrainer<?> getTrainer();
 		
-	
-	public void trainTest() throws FileNotFoundException{
-		data.importData();
+	public void trainTest(boolean importData) throws FileNotFoundException{
+		if (importData)data.importData();
 		ClassifierTrainer<?> trainer = getTrainer();
 
 		trainer.train(data.getTrainingSet());
@@ -49,6 +48,10 @@ public abstract class BaseModel {
 		System.out.println("Test set results");
 		System.out.println(new ConfusionMatrix(testResult).toString());
 		
+	}
+	
+	public void trainTest() throws FileNotFoundException{
+		trainTest(true);
 	}
 
 }

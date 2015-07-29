@@ -30,10 +30,10 @@ public class MaxEntModel extends BaseModel{
 			maxEnt = new MaxEntModel(args[0]);
 		}
 		System.out.println("MaxEnt with original data");
-		maxEnt.trainTest();
+		maxEnt.trainTest(true);
 		Util.reweightTrainingDataNway(maxEnt.data.getTrainingSet());
 		System.out.println("MaxEnt with reweighted data");
-		maxEnt.trainTest();
+		maxEnt.trainTest(false);
 	}
 
 }
