@@ -162,6 +162,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			extraInfo.put("data", this.originalData.getDevFileName());
 			extraInfo.put("task", labelType.toString());
+			extraInfo.put("set", "dev");
 			extraInfo.put("num features", this.originalData.getNumFeatures());
 			extraInfo.put("approach", "flat");
 			writer.write(cm, extraInfo);
@@ -174,6 +175,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 			cm = new SimpleConfusionMatrix(trueLabels, predictedLabels);
 			extraInfo.put("data", this.originalData.getTestFileName());
 			extraInfo.put("task", labelType.toString());
+			extraInfo.put("set", "test");
 			extraInfo.put("num features", this.originalData.getNumFeatures());
 			extraInfo.put("approach", "flat");
 			writer.write(cm, extraInfo);
