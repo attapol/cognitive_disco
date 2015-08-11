@@ -253,6 +253,14 @@ def experiment4_3(mapping_file, dir_list):
 	nf = doc_id_relation_id_nf
 	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
 
+def experiment_simple(mapping_file, dir_list):
+	experiment_name = 'experiment_simple'
+	ff_list = [ f.production_rules]
+	lf_list = [l.ComparisonBinary()]
+	nf = doc_id_relation_id_nf
+	generate_feature_files(dir_list, ff_list, lf_list, nf, experiment_name)
+
+
 def prune_feature_files(training_dir, experiment_name, mapping_name, cutoff):
 	file_patterns = '%s/%s.%s.*' % (training_dir, experiment_name, mapping_name)
 	files = glob.glob(file_patterns)

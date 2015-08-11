@@ -100,3 +100,17 @@ class GenericMapping(object):
 					return None
 				else: 
 					return label
+
+class ComparisonBinary(LabelFunction):
+
+	def label_name(self):
+		return 'comparison_binary'
+
+	def label(self, drelation):
+		senses = drelation.senses
+		s = senses[0].split('.')[0]
+		if s == 'Comparison':
+			return 'Comparison'
+		else:
+			return 'negative'
+
