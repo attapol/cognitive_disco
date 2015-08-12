@@ -23,9 +23,9 @@ class Trainer(object):
 				givens=givens
 				)
 
-		#cost = theano.function(inputs = [self.model.activation, self.model.Y],
+		#cost = theano.function(inputs = [self.model.activation, self.model.output],
 				#outputs=self.cost_function)
-		accuracy = T.mean(T.eq(self.model.Y, self.model.predict))
+		accuracy = T.mean(T.eq(self.model.output, self.model.predict))
 		self.eval_function = theano.function(inputs=self.model.input + self.model.output,
 				outputs=[accuracy, self.cost_function]
 				)
