@@ -127,12 +127,14 @@ class Word(object):
 	def sentence_index(self):
 		return self.word_address[3]
 
-def extract_implicit_relations(data_folder):
+def extract_implicit_relations(data_folder, label_function=None):
 	parse_file = '%s/pdtb-parses-plus.json' % data_folder
 	parse = json.load(open(parse_file))
 
 	relation_file = '%s/pdtb-data-plus.json' % data_folder
 	relation_dicts = [json.loads(x) for x in open(relation_file)]
 	relations = [DRelation(x, parse) for x in relation_dicts if x['Type'] == 'Implicit']
+	if label_function is not None:
+		relations = [x for x in relations if label_function.label(x) is not None]
 	return relations
 

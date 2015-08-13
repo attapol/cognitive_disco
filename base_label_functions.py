@@ -7,13 +7,15 @@ and output a label string.
 import json
 import os
 
-
 class LabelFunction(object):
 	
 	def label_name(self):
 		raise NotImplementedError("Subclasses should implement this!")
 
 	def label(self, drelation):
+		raise NotImplementedError("Subclasses should implement this!")
+
+	def valid_labels(self):
 		raise NotImplementedError("Subclasses should implement this!")
 
 class OriginalLabel(LabelFunction):
@@ -33,6 +35,38 @@ class TopLevelLabel(LabelFunction):
 	def label(self, drelation):
 		senses = drelation.senses
 		return senses[0].split('.')[0]
+
+class SecondLevelLabel(LabelFunction):
+
+	def label_name(self):
+		return 'second_level_label'
+
+	def label(self, drelation):
+		split_sense = drelation.senses[0].split('.')
+		num_split = len(split_sense)
+		if num_split > 1 and not split_sense[1] == 'Condition' and \
+				not split_sense[1] == 'Pragmatic condition' and \
+				not split_sense[1] == 'Pragmatic contrast' and \
+				not split_sense[1] == 'Pragmatic concession' and \
+				not split_sense[1] == 'Exception':
+			return split_sense[0]+"."+split_sense[1];
+		return None
+
+	def valid_labels(self):
+		LEVEL2_SENSES = [
+				"Comparison.Concession",
+				"Comparison.Contrast",
+				"Contingency.Cause",
+				"Contingency.Pragmatic cause",
+				"Expansion.Alternative",
+				"Expansion.Conjunction",
+				"Expansion.Instantiation",
+				"Expansion.List",
+				"Expansion.Restatement",
+				"Temporal.Asynchronous",
+				"Temporal.Synchrony"
+		]
+		return LEVEL2_SENSES
 
 
 """Generic Mapper from JSON file

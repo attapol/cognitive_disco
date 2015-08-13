@@ -6,6 +6,10 @@ import timeit
 class Trainer(object):
 
 	def train_minibatch(self, minibatch_size, n_epochs, training_data, dev_data, test_data):
+		"""
+
+		training_data should be a list of [Y, X1, X2, ... Xn]
+		"""
 
 		index = T.lscalar() # index to minibatch
 		T_training_data = [theano.shared(x, borrow=True) for x in training_data]
@@ -42,21 +46,26 @@ class Trainer(object):
 
 		done_looping = False
 		epoch = 0
+		best_dev_acc = 0.0
+		best_dev_iteration = 0
+		best_test_acc = 0.0
 		while (epoch < n_epochs) and (not done_looping):
 			epoch = epoch + 1
 			for minibatch_index in xrange(n_train_batches):
-				iter = (epoch - 1) * n_train_batches  + minibatch_index
+				iteration = (epoch - 1) * n_train_batches  + minibatch_index
 				start_time = timeit.default_timer()
 				c = self.train_function(minibatch_index)
 				end_time = timeit.default_timer()
-				#print 'Iteration %s took % second(s)' % (iter, end_time - start_time)
-				if (iter + 1) % validation_frequency == 0:
-					accuracy, c  = self.eval_function(*dev_data)
-					print 'DEV: Iteration %s : accuracy = %s ; cost =%s' % (iter, accuracy, c)
-					accuracy, c  = self.eval_function(*test_data)
-					print 'TEST: Iteration %s : accuracy = %s ; cost =%s' % (iter, accuracy, c)
-					
-
+				if (iteration + 1) % validation_frequency == 0:
+					dev_accuracy, c  = self.eval_function(*dev_data)
+					print 'DEV: iteration %s : accuracy = %s ; cost =%s' % (iteration, dev_accuracy, c)
+					test_accuracy, c  = self.eval_function(*test_data)
+					print 'TEST: iteration %s : accuracy = %s ; cost =%s' % (iteration, test_accuracy, c)
+					if dev_accuracy > best_dev_acc:
+						best_dev_acc = dev_accuracy
+						best_dev_iteration = iteration
+						best_test_acc = test_accuracy	
+		return best_dev_iteration, best_dev_acc, best_test_acc
 
 class AdagradTrainer(Trainer):
 
