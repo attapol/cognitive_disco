@@ -3,21 +3,103 @@ import theano
 import theano.tensor as T
 import timeit
 
+class DataTriplet(object):
+
+	def __init__(self, data_list=None, label_vectors=None):
+		self.training_data = []
+		self.training_data_label = []
+		self.dev_data = []
+		self.dev_data_label = []
+		self.test_data = []
+		self.test_data_label = []
+
+		if data_list is not None:
+			self.training_data = [x for x in data_list[0]]
+			self.dev_data = [x for x in data_list[1]]
+			self.test_data = [x for x in data_list[2]]
+		if label_vectors is not None:
+			self.training_data_label = [x for x in label_vectors[0]]
+			self.dev_data_label = [x for x in label_vectors[1]]
+			self.test_data_label = [x for x in label_vectors[2]]
+
+	def _check_num_rows(self, data_list):
+		num_rows = [x.shape[0] for x in data_list]
+		assert(all(x == num_rows[0] for x in num_rows))
+
+	def assert_data_same_length(self):
+		assert(len(self.training_data) == len(self.dev_data))	
+		assert(len(self.test_data) == len(self.dev_data))	
+
+		assert(len(self.training_data_label) == len(self.dev_data_label))	
+		assert(len(self.test_data_label) == len(self.dev_data_label))	
+
+		self._check_num_rows(self.training_data)
+		self._check_num_rows(self.dev_data)
+		self._check_num_rows(self.test_data)
+
+		self._check_num_rows(self.training_data_label)
+		self._check_num_rows(self.dev_data_label)
+		self._check_num_rows(self.test_data_label)
+
+	def num_input_variables(self):
+		self.assert_data_same_length()
+		return len(self.training_data)
+
+	def input_dimensions(self):
+		return [x.shape[1] for x in self.training_data]
+
+	def num_output_variables(self):
+		self.assert_data_same_length()
+		return len(self.training_data_label)
+
+	def training_data_and_label_list(self):
+		return self.training_data + self.training_data_label
+
+	def dev_data_and_label_list(self):
+		return self.dev_data + self.dev_data_label
+
+	def test_data_and_label_list(self):
+		return self.test_data + self.test_data_label
+
+
 class Trainer(object):
 
 	def train_minibatch(self, minibatch_size, n_epochs, training_data, dev_data, test_data):
-		"""
+		"""Train minibatch with one output
 
-		training_data should be a list of [Y, X1, X2, ... Xn]
+		training_data should be a list of [X1, X2, ... Xn,Y]
 		"""
+		data_triplet = DataTriplet()
+
+		data_triplet.training_data.extend(training_data[:-1])
+		data_triplet.training_data_label.append(training_data[-1])
+
+		data_triplet.dev_data.extend(dev_data[:-1])
+		data_triplet.dev_data_label.append(dev_data[-1])
+
+		data_triplet.test_data.extend(test_data[:-1])
+		data_triplet.test_data_label.append(test_data[-1])
+
+		return self.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
+
+
+	def train_minibatch_triplet(self, minibatch_size, n_epochs, data_triplet):
+		data_triplet.assert_data_same_length()
+		assert(len(self.model.input) == data_triplet.num_input_variables())
+		assert(len(self.model.output) == data_triplet.num_output_variables())
 
 		index = T.lscalar() # index to minibatch
-		T_training_data = [theano.shared(x, borrow=True) for x in training_data]
-		givens = {self.model.output[0] : 
-				T_training_data[-1][index * minibatch_size: (index + 1) * minibatch_size]}
+		T_training_data = [theano.shared(x, borrow=True) for x in data_triplet.training_data]
+		T_training_data_label = [theano.shared(x, borrow=True) for x in data_triplet.training_data_label]
+
+		givens = {}
+		for i, output_var in enumerate(self.model.output):
+			givens[output_var] = \
+				T_training_data_label[i][index * minibatch_size: (index + 1) * minibatch_size]
+
 		for i, input_var in enumerate(self.model.input):
 			givens[input_var] = \
-					T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
+				T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
 
 
 		self.train_function = theano.function(
@@ -35,11 +117,11 @@ class Trainer(object):
 				)
 
 		patience = 5000
-		patience_increase = 2 # wait this much longer when a new best is found
-		improvement_threshold = 0.995
+		patience_increase = 2.5 # wait this much longer when a new best is found
+		improvement_threshold = 0.9975
 
-		n_train_batches = training_data[0].shape[0] / minibatch_size
-		validation_frequency = min(n_train_batches, patience /2 )
+		n_train_batches = data_triplet.training_data[0].shape[0] / minibatch_size
+		validation_frequency = min(n_train_batches, patience / 2)
 	
 		best_validation_loss = np.inf
 		test_score = 0 
@@ -57,15 +139,23 @@ class Trainer(object):
 				c = self.train_function(minibatch_index)
 				end_time = timeit.default_timer()
 				if (iteration + 1) % validation_frequency == 0:
-					dev_accuracy, c  = self.eval_function(*dev_data)
+					dev_accuracy, c = \
+							self.eval_function(*data_triplet.dev_data_and_label_list())
 					print 'DEV: iteration %s : accuracy = %s ; cost =%s' % (iteration, dev_accuracy, c)
-					test_accuracy, c  = self.eval_function(*test_data)
+					test_accuracy, c = \
+							self.eval_function(*data_triplet.test_data_and_label_list())
 					print 'TEST: iteration %s : accuracy = %s ; cost =%s' % (iteration, test_accuracy, c)
 					if dev_accuracy > best_dev_acc:
+						if dev_accuracy * improvement_threshold > best_dev_acc:
+							patience = max(patience, iteration * patience_increase)
 						best_dev_acc = dev_accuracy
 						best_dev_iteration = iteration
 						best_test_acc = test_accuracy	
-		return best_dev_iteration, best_dev_acc, best_test_acc
+				if patience <= iteration:
+					done_looping = True
+					break
+
+		return best_dev_iteration, float(best_dev_acc), float(best_test_acc)
 
 class AdagradTrainer(Trainer):
 

@@ -140,6 +140,29 @@ def first_last_first_3(relation):
 	feature_vector.append(first_3_arg2)
 	return [re.sub(':','COLON',x) for x in feature_vector]
 
+def production_singles(relation):
+	arg1_tree, token_indices1 = relation.arg_tree(1)
+	arg2_tree, token_indices2 = relation.arg_tree(2)
+	rule_set1 = _get_production_rules(Tree(arg1_tree), token_indices1)
+	rule_set2 = _get_production_rules(Tree(arg2_tree), token_indices2)
+	feature_vector = []
+	for rule in rule_set1:
+		feature_vector.append('A1RULE=%s' % rule)
+	for rule in rule_set2:
+		feature_vector.append('A2RULE=%s' % rule)
+	return feature_vector
+
+def production_pairs(relation):
+	arg1_tree, token_indices1 = relation.arg_tree(1)
+	arg2_tree, token_indices2 = relation.arg_tree(2)
+	rule_set1 = _get_production_rules(Tree(arg1_tree), token_indices1)
+	rule_set2 = _get_production_rules(Tree(arg2_tree), token_indices2)
+	feature_vector = []
+	for rule1 in rule_set1:
+		for rule2 in rule_set2:
+			feature_vector.append('RULEPAIR=%s_%s' % (rule1, rule2))
+	return feature_vector
+
 def production_rules(relation):
 	arg1_tree, token_indices1 = relation.arg_tree(1)
 	arg2_tree, token_indices2 = relation.arg_tree(2)

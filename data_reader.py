@@ -34,6 +34,7 @@ class DRelation(object):
 		return self.relation_dict['Sense']
 
 	def arg_words(self, arg_pos):
+		"""Returns a list of Word objects"""
 		assert(arg_pos == 1 or arg_pos == 2)
 		if self._arg_words[arg_pos] is None:
 			key = 'Arg%s' % arg_pos
@@ -81,6 +82,7 @@ class DRelation(object):
 		return '%s_%s' % (self.doc_id, self.relation_id)
 
 	def arg_tokens(self, arg_pos):
+		"""Returns a list of raw tokens"""
 		assert(arg_pos == 1 or arg_pos == 2)
 		if self._arg_tokens[arg_pos] is None:
 			key = 'Arg%s' % arg_pos

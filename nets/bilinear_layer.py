@@ -7,6 +7,42 @@ import timeit
 
 from learning import AdagradTrainer
 
+class NeuralNet(object):
+
+	def __init__(self):
+		self.params = []#a list of paramter variables
+		self.input = [] #a list of input variables
+		self.output = []#a list of output variables
+		self.predict = [] # a list of prediction functions
+		self.hinge_loss = None # a function
+		self.crossentropy = None # a function
+
+
+class GlueLayer(object):
+	"""Glue Layer that glues Bilinear and Linear layers output together
+	by simply adding up
+	"""
+
+	def __init__(self, X_list=None, Y=None, activation_fn=T.tanh):
+		net = 0
+		for X in X_list:
+			net += X
+		self.activation = (
+			net if activation_fn is None
+			else activation_fn(net)
+		)
+		if Y is None:
+			self.output = []
+		else:
+			self.output = [Y]
+			self.predict = self.activation.argmax(1)
+			hinge_loss_instance, _ = theano.scan(
+					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
+					sequences=[self.activation, Y])
+			self.hinge_loss = hinge_loss_instance.sum()
+			self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
+		
+
 class LinearLayer(object):
 	"""Linear Layer that supports multiple separate input (sparse) vectors
 
@@ -50,8 +86,8 @@ class LinearLayer(object):
 			for i in range(1, len(self.input)):
 				net += theano.sparse.structured_dot(self.input[i],self.W_list[i])
 		else:
-			net = self.b + T.dot(self.input[0], self.W_list[0])
-			for i in range(1, len(self.input)):
+			net = self.b 
+			for i in range(len(self.input)):
 				net += T.dot(self.input[i], self.W_list[i])
 		
 		self.activation = (
@@ -60,7 +96,7 @@ class LinearLayer(object):
 		)
 
 		if Y is None:
-			self.output = [self.activation]
+			self.output = []
 		else:
 			self.output = [Y]
 			self.predict = self.activation.argmax(1)
@@ -73,8 +109,13 @@ class LinearLayer(object):
 
 
 class BilinearLayer(object):
+	"""Bilinear layer with dense vectors
 
-	def __init__(self, rng, n_in1, n_in2, n_out, W=None, b=None, activation_fn=T.tanh):
+	Tensor product in theano does not support sparse vectors. 
+	We have to go around this isssue.
+	"""
+
+	def __init__(self, rng, n_in1, n_in2, n_out, Y=None, W=None, b=None, activation_fn=T.tanh):
 		if W is None:
 			W_values = np.asarray(
 				rng.uniform(
@@ -92,11 +133,9 @@ class BilinearLayer(object):
 		
 		self.X1 = T.matrix('x1')
 		self.X2 = T.matrix('x2')
-		self.Y = T.lvector('y')
 		self.W = W
 		self.b = b
 		self.input = [self.X1, self.X2]
-		self.output = [self.Y]
 		self.params = [self.W, self.b]
 		net, _ = theano.scan(
 				lambda x1, x2: T.dot(T.dot(x1, self.W),x2.T) + self.b,
@@ -108,17 +147,16 @@ class BilinearLayer(object):
 			net if activation_fn is None
 			else activation_fn(net)
 		)
-		self.predict = self.activation.argmax(1)
-
-		hinge_loss_instance, _ = theano.scan(
-				lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
-				sequences=[self.activation, self.Y])
-		self.hinge_loss = hinge_loss_instance.sum()
-
-		true_label_activation, _ = theano.scan(
-				lambda a, y: T.log(1 - a[y]), 
-				sequences=[self.activation, self.Y])
-		self.crossentropy = true_label_activation.mean()
+		if Y is None:
+			self.output = []
+		else:
+			self.output = [Y]
+			self.predict = self.activation.argmax(1)
+			hinge_loss_instance, _ = theano.scan(
+					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
+					sequences=[self.activation, Y])
+			self.hinge_loss = hinge_loss_instance.sum()
+			self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
 
 def test_bilinear():
 	num_features = 50
