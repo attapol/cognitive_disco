@@ -29,5 +29,30 @@ class EmbeddingFeaturizer(object):
 			for x in relation_list])
 		arg2_matrix = np.array([self.create_arg_matrix(x.arg_tokens(2)).sum(0) 
 			for x in relation_list])
-		return arg1_matrix, arg2_matrix 
+		return [arg1_matrix, arg2_matrix]
+
+def cdssm_feature(relation_list):
+	num_relations = len(relation_list)
+	num_units = len(relation_list[0].relation_dict['Arg1']['CDSSMTarget']) * 2
 	
+	arg1_matrix1 = np.array([x.relation_dict['Arg1']['CDSSMTarget'] for x in relation_list])
+	arg1_matrix2 = np.array([x.relation_dict['Arg1']['CDSSMSource'] for x in relation_list])
+	arg1_matrix = np.hstack((arg1_matrix1, arg1_matrix2))
+
+	arg2_matrix1 = np.array([x.relation_dict['Arg2']['CDSSMTarget'] for x in relation_list])
+	arg2_matrix2 = np.array([x.relation_dict['Arg2']['CDSSMSource'] for x in relation_list])
+	arg2_matrix = np.hstack((arg2_matrix1, arg2_matrix2))
+	return [arg1_matrix, arg2_matrix]
+
+def cached_features(relation_list, feature_name):
+	num_relations = len(relation_list)
+	num_units = len(relation_list[0].relation_dict['Features'][feature_name]) 
+	return [np.array([x.relation_dict['Features'][feature_name] for x in relation_list])]
+
+def cached_argwise_features(relation_list, feature_name):
+	num_relations = len(relation_list)
+	num_units = len(relation_list[0].relation_dict['Arg1'][feature_name]) 
+	arg1_matrix = np.array([x.relation_dict['Arg1'][feature_name] for x in relation_list])
+	arg2_matrix = np.array([x.relation_dict['Arg2'][feature_name] for x in relation_list])
+	return [arg1_matrix, arg2_matrix]
+

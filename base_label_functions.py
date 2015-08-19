@@ -135,6 +135,12 @@ class GenericMapping(object):
 				else: 
 					return label
 
+		def valid_labels(self):
+			label_set = set()
+			for sense in self.mapping:
+				label_set.add(self.mapping[sense][self.dimension])
+			return label_set
+
 class ComparisonBinary(LabelFunction):
 
 	def label_name(self):

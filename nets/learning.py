@@ -84,6 +84,11 @@ class Trainer(object):
 
 
 	def train_minibatch_triplet(self, minibatch_size, n_epochs, data_triplet):
+		"""Train with minibatch
+
+		The early stoping is on the last output variable accuracy only.
+		This is crazy stupid ugly solution but it should be ok. 
+		"""
 		data_triplet.assert_data_same_length()
 		assert(len(self.model.input) == data_triplet.num_input_variables())
 		assert(len(self.model.output) == data_triplet.num_output_variables())
@@ -109,9 +114,8 @@ class Trainer(object):
 				givens=givens
 				)
 
-		#cost = theano.function(inputs = [self.model.activation, self.model.output],
-				#outputs=self.cost_function)
-		accuracy = T.mean(T.eq(self.model.output, self.model.predict))
+		#ugly crap going on to compute accuracy on the last output variable only
+		accuracy = T.mean(T.eq(self.model.output[-1], self.model.predict[-1]))
 		self.eval_function = theano.function(inputs=self.model.input + self.model.output,
 				outputs=[accuracy, self.cost_function]
 				)
@@ -166,9 +170,9 @@ class AdagradTrainer(Trainer):
 		self.lr_smoother = lr_smoother
 
 		gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
-		adagrad_rates = [theano.shared(value=np.zeros(param.get_value().shape)) 
+		adagrad_rates = [theano.shared(value=np.zeros(param.get_value().shape), borrow=True) 
 				for param in self.model.params]
-		sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape)) 
+		sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape), borrow=True) 
 				for param in self.model.params]
 
 		self.sgs_updates = [(sgs, sgs + T.square(gparam)) 
