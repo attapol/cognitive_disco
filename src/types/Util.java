@@ -16,16 +16,23 @@ public class Util {
 		 */
 		int numClasses = data.getTargetAlphabet().size();
 		int numData = data.size();
-		int[] trueLabelCount = new int[numClasses];
-		for (Instance instance : data) {
-			int bestIndex = instance.getLabeling().getBestIndex();
-			trueLabelCount[bestIndex]++;
-		}
+		int[] trueLabelCount = computeClassFrequencies(data);
 		for (Instance instance : data) {
 			int bestIndex = instance.getLabeling().getBestIndex();
 			double weight = (numData + 0.0) / trueLabelCount[bestIndex] / numClasses;
 			data.setInstanceWeight(instance, weight);
 		}
+	}
+	
+	public static int[] computeClassFrequencies(InstanceList data){
+		int numClasses = data.getTargetAlphabet().size();
+		int[] trueLabelCount = new int[numClasses];
+		for (Instance instance : data) {
+			int bestIndex = instance.getLabeling().getBestIndex();
+			trueLabelCount[bestIndex]++;
+		}
+		return trueLabelCount;
+		
 	}
 	
 }
