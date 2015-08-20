@@ -1,5 +1,6 @@
 package models;
 
+import types.Util;
 import java.io.FileNotFoundException;
 
 import cc.mallet.classify.ClassifierTrainer;
@@ -32,7 +33,11 @@ public class NaiveBayesModel extends BaseModel {
 		} else {
 			m = new NaiveBayesModel(args[0]);
 		}
-		m.trainTest();
+		System.out.println("NaiveBayes with original data");
+		m.trainTest(true);
+		Util.reweightTrainingDataNway(m.data.getTrainingSet());
+		System.out.println("NaiveBayes with reweighted data");
+		m.trainTest(false);
 	}
 
 }

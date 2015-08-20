@@ -34,6 +34,7 @@ class DRelation(object):
 		return self.relation_dict['Sense']
 
 	def arg_words(self, arg_pos):
+		"""Returns a list of Word objects"""
 		assert(arg_pos == 1 or arg_pos == 2)
 		if self._arg_words[arg_pos] is None:
 			key = 'Arg%s' % arg_pos
@@ -81,6 +82,7 @@ class DRelation(object):
 		return '%s_%s' % (self.doc_id, self.relation_id)
 
 	def arg_tokens(self, arg_pos):
+		"""Returns a list of raw tokens"""
 		assert(arg_pos == 1 or arg_pos == 2)
 		if self._arg_tokens[arg_pos] is None:
 			key = 'Arg%s' % arg_pos
@@ -127,12 +129,14 @@ class Word(object):
 	def sentence_index(self):
 		return self.word_address[3]
 
-def extract_implicit_relations(data_folder):
+def extract_implicit_relations(data_folder, label_function=None):
 	parse_file = '%s/pdtb-parses-plus.json' % data_folder
 	parse = json.load(open(parse_file))
 
 	relation_file = '%s/pdtb-data-plus.json' % data_folder
 	relation_dicts = [json.loads(x) for x in open(relation_file)]
 	relations = [DRelation(x, parse) for x in relation_dicts if x['Type'] == 'Implicit']
+	if label_function is not None:
+		relations = [x for x in relations if label_function.label(x) is not None]
 	return relations
 
