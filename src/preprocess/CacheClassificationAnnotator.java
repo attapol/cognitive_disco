@@ -82,6 +82,7 @@ public class CacheClassificationAnnotator {
 			relationJSON.write(wr);
 			wr.write("\n");
 		}
+		wr.close();
 	}
 	
 

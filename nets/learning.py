@@ -1,17 +1,21 @@
 import numpy as np
 import theano
 import theano.tensor as T
+from theano import config
 import timeit
+
+import cognitive_disco.nets.lstm as lstm
 
 class DataTriplet(object):
 
-	def __init__(self, data_list=None, label_vectors=None):
+	def __init__(self, data_list=None, label_vectors=None, label_alphabet_list=None):
 		self.training_data = []
 		self.training_data_label = []
 		self.dev_data = []
 		self.dev_data_label = []
 		self.test_data = []
 		self.test_data_label = []
+		self.label_alphabet_list = label_alphabet_list
 
 		if data_list is not None:
 			self.training_data = [x for x in data_list[0]]
@@ -51,6 +55,9 @@ class DataTriplet(object):
 	def num_output_variables(self):
 		self.assert_data_same_length()
 		return len(self.training_data_label)
+
+	def output_dimensions(self):
+		return [len(x) for x in self.label_alphabet_list]
 
 	def training_data_and_label_list(self):
 		return self.training_data + self.training_data_label
@@ -102,13 +109,20 @@ class Trainer(object):
 			givens[output_var] = \
 				T_training_data_label[i][index * minibatch_size: (index + 1) * minibatch_size]
 
-		for i, input_var in enumerate(self.model.input):
-			givens[input_var] = \
-				T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
+		if type(self.model) == lstm.LSTM:
+			givens[self.model.input[0]] = \
+				T_training_data[0][:,index * minibatch_size: (index + 1) * minibatch_size, :]
+			givens[self.model.input[1]] = \
+				T_training_data[1][:,index * minibatch_size: (index + 1) * minibatch_size]
+		else:
+			for i, input_var in enumerate(self.model.input):
+				givens[input_var] = \
+					T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
 
 
 		self.train_function = theano.function(
 				inputs=[index],
+				#outputs=[self.cost_function, self.model.mean_pooled_h, self.model.h],
 				outputs=self.cost_function,
 				updates=self.sgs_updates + self.adagrad_lr_updates + self.param_updates,
 				givens=givens
@@ -135,14 +149,19 @@ class Trainer(object):
 		best_dev_acc = 0.0
 		best_dev_iteration = 0
 		best_test_acc = 0.0
+		total_cost = 0.0
 		while (epoch < n_epochs) and (not done_looping):
 			epoch = epoch + 1
 			for minibatch_index in xrange(n_train_batches):
 				iteration = (epoch - 1) * n_train_batches  + minibatch_index
 				start_time = timeit.default_timer()
 				c = self.train_function(minibatch_index)
+				total_cost += c
 				end_time = timeit.default_timer()
 				if (iteration + 1) % validation_frequency == 0:
+					num_samples_seen = iteration * minibatch_size
+					average_cost = total_cost / num_samples_seen
+					print 'TRAIN: iteration %s : average cost =%s' % (iteration, average_cost)
 					dev_accuracy, c = \
 							self.eval_function(*data_triplet.dev_data_and_label_list())
 					print 'DEV: iteration %s : accuracy = %s ; cost =%s' % (iteration, dev_accuracy, c)
@@ -170,9 +189,9 @@ class AdagradTrainer(Trainer):
 		self.lr_smoother = lr_smoother
 
 		gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
-		adagrad_rates = [theano.shared(value=np.zeros(param.get_value().shape), borrow=True) 
+		adagrad_rates = [theano.shared(value=np.zeros(param.get_value().shape).astype(config.floatX), borrow=True) 
 				for param in self.model.params]
-		sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape), borrow=True) 
+		sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape).astype(config.floatX), borrow=True) 
 				for param in self.model.params]
 
 		self.sgs_updates = [(sgs, sgs + T.square(gparam)) 

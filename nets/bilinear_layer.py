@@ -59,7 +59,7 @@ class GlueLayer(object):
 					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
 					sequences=[self.activation, Y])
 			self.hinge_loss = hinge_loss_instance.sum()
-			self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
+			self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
 class MixtureOfExperts(object):
 
@@ -69,14 +69,7 @@ class MixtureOfExperts(object):
 			total_n_in = np.sum(n_in_list)
 			n_out = len(expert_list)
 			for n_in in n_in_list:
-				W_values = np.asarray(
-					rng.uniform(
-						low=-np.sqrt(6. / (total_n_in + n_out)),
-						high=np.sqrt(6. / (total_n_in + n_out)),
-						size=(n_in, n_out)
-					),
-					dtype=theano.config.floatX
-				)
+				W_values = np.zeros((n_in, n_out), dtype=theano.config.floatX)
 				W = theano.shared(value=W_values, borrow=True)
 				W_list.append(W)
 		if b is None:
@@ -91,14 +84,15 @@ class MixtureOfExperts(object):
 		for expert in expert_list:
 			self.params.extend(expert.params)
 
-		net = self.b 
+		net = self.b
 		for i in range(len(self.input)):
-			net += T.dot(self.input[i], self.W_list[i])
+			net += T.dot(self.input[i], self.W_list[i]) 
 		gating_activation = T.nnet.softmax(net)
 
 		self.activation = 0
-		for i, expert in enumerate(expert_list)
-			self.activation += expert.activation * gating_activation[:,i:i+1]
+		for i, expert in enumerate(expert_list):
+			g = T.addbroadcast(gating_activation[:,i:i+1], 1)
+			self.activation += expert.activation * g
 
 		self.output = [Y]
 		self.predict = [self.activation.argmax(1)]
@@ -106,7 +100,7 @@ class MixtureOfExperts(object):
 				lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
 				sequences=[self.activation, Y])
 		self.hinge_loss = hinge_loss_instance.sum()
-		self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
+		self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
 class LinearLayer(object):
 	"""Linear Layer that supports multiple separate input (sparse) vectors
@@ -167,7 +161,7 @@ class LinearLayer(object):
 					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
 					sequences=[self.activation, Y])
 			self.hinge_loss = hinge_loss_instance.sum()
-			self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
+			self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
 
 
@@ -215,7 +209,7 @@ class BilinearLayer(object):
 					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
 					sequences=[self.activation, Y])
 			self.hinge_loss = hinge_loss_instance.sum()
-			self.crossentropy = -T.mean(self.activation[T.arange(Y.shape[0]), Y])
+			self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
 def test_bilinear():
 	num_features = 50

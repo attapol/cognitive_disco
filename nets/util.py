@@ -1,7 +1,6 @@
 import numpy as np
 import scipy as sp
 from cognitive_disco.data_reader import extract_implicit_relations
-from cognitive_disco.nets.bilinear_layer import BilinearLayer
 
 def _sparse_featurize_relation_list(relation_list, ff_list, alphabet=None):
 	if alphabet is None:

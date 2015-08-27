@@ -10,11 +10,13 @@ import theano.tensor as T
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
 		BilinearLayer, LinearLayer, GlueLayer, MJMModel, MixtureOfExperts
+from cognitive_disco.nets.lstm import LSTM, prep_serrated_matrix_relations
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 import cognitive_disco.nets.util as util
 import cognitive_disco.dense_feature_functions as df
 import cognitive_disco.feature_functions as f
 import cognitive_disco.base_label_functions as l
+from tpl.language.lexical_structure import WordEmbeddingMatrix
 
 
 def net_experiment0_0(dir_list, args):
@@ -705,40 +707,107 @@ def net_experiment2_0(dir_list, args):
 # Mixture of Experts to show that there is something special
 # and the two ways of classification complement each other
 #
-def net_experiment3_0(dir_list, args):
-	experiment_name = sys._getframe().f_code.co_name	
-	json_file = set_logger(experiment_name)
-	sense_lf = l.SecondLevelLabel()
 
-	if len(args) > 0 and args[0] == 'test':
-		print 'Using test mode'
-		dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
-		dict_file = df.EmbeddingFeaturizer.TEST_WORD_EMBEDDING_FILE
-		num_reps = 2
-	else:
-		dict_file = df.EmbeddingFeaturizer.WORD_EMBEDDING_FILE
-		num_reps = 10
-
-	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
-
-	word2vec = df.EmbeddingFeaturizer(dict_file)
-	data_list = []
-	for relation_list in relation_list_list:
-		data = []
-		data.extend(word2vec(relation_list))
-		data.extend(cached_features(relation_list, 'BaselineClassification'))
-		data_list.append(data)
-	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, lf)
-	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors])
-
+def _net_experiment3_dnn_helper(experiment_name, json_file,
+		num_hidden_layers, num_hidden_units, num_reps, data_triplet, use_hinge, 
+		noise_cache=False):
+	#theano.config.optimizer = 'None'
 	for rep in xrange(num_reps):
 		random_seed = rep
 		minibatch_size = 50
 		n_epochs = 20
 		learning_rate = 0.01
 		lr_smoother = 0.01
-		use_linear = True
-		use_bilinear = True
+		rng = np.random.RandomState(random_seed)
+
+		X_list = [T.matrix(), T.matrix(), T.matrix()]
+		first_layer = LinearLayer(rng, 
+			n_in_list=data_triplet.input_dimensions()[0:2], 
+			n_out=data_triplet.output_dimensions()[0] if num_hidden_layers == 0 else num_hidden_units,
+			use_sparse=False, 
+			X_list=X_list[0:2], 
+			activation_fn=None if use_hinge else T.nnet.softmax)
+		top_layer = first_layer
+		for i in range(num_hidden_layers):
+			is_top_layer = i == (num_hidden_layers - 1)
+			if is_top_layer:
+				hidden_layer = LinearLayer(rng,
+					n_in_list=[num_hidden_units], 
+					n_out=data_triplet.output_dimensions()[0], 
+					use_sparse=False, 
+					X_list=[top_layer.activation], 
+					activation_fn=None if use_hinge else T.nnet.softmax)
+			else:
+				hidden_layer = LinearLayer(rng,
+					n_in_list=[num_hidden_units], 
+					n_out=num_hidden_units, 
+					use_sparse=False, 
+					X_list=[top_layer.activation], 
+					activation_fn=T.tanh)
+			hidden_layer.params.extend(top_layer.params)
+			top_layer = hidden_layer
+
+		if noise_cache:
+			num_cache_hidden_units = 5
+			input_cached_layer = LinearLayer(rng,
+					n_in_list=data_triplet.input_dimensions()[2:3],
+					n_out=num_cache_hidden_units,
+					use_sparse=False,
+					X_list=X_list[2:3],
+					activation_fn=T.tanh)
+			cached_layer = LinearLayer(rng,
+					n_in_list=[num_cache_hidden_units],
+					n_out=data_triplet.output_dimensions()[0],
+					use_sparse=False,
+					X_list=[input_cached_layer.activation],
+					activation_fn=None if use_hinge else T.nnet.softmax)
+			cached_layer.params.extend(input_cached_layer.params)
+		else:
+			cached_layer = LinearLayer(rng,
+					n_in_list=data_triplet.input_dimensions()[2:3],
+					n_out=data_triplet.output_dimensions()[0],
+					use_sparse=False,
+					X_list=X_list[2:3],
+					activation_fn=None if use_hinge else T.nnet.softmax)
+
+
+		moe = MixtureOfExperts(rng, 
+				n_in_list=data_triplet.input_dimensions(),
+				expert_list=[top_layer, cached_layer],
+				X_list=X_list,
+				Y=T.lvector())
+
+		trainer = AdagradTrainer(moe, moe.hinge_loss if use_hinge else moe.crossentropy, 
+				learning_rate, lr_smoother)
+		start_time = timeit.default_timer()
+		best_iter, best_dev_acc, best_test_acc = \
+				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
+		end_time = timeit.default_timer()
+		print end_time - start_time 
+		print best_iter, best_dev_acc, best_test_acc
+		result_dict = {
+				'test accuracy': best_test_acc,
+				'best dev accuracy': best_dev_acc,
+				'best iter': best_iter,
+				'random seed': random_seed,
+				'minibatch size': minibatch_size,
+				'learning rate': learning_rate,
+				'lr smoother': lr_smoother,
+				'experiment name': experiment_name,
+				'cost function': 'hinge' if use_hinge else 'crossentropy',
+				'num hidden layers': num_hidden_layers,
+				'num hidden units': num_hidden_units,
+				}
+		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
+
+
+def _net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, use_linear, use_bilinear, use_hinge):
+	for rep in xrange(num_reps):
+		random_seed = rep
+		minibatch_size = 50
+		n_epochs = 20
+		learning_rate = 0.01
+		lr_smoother = 0.01
 
 		rng = np.random.RandomState(random_seed)
 
@@ -747,7 +816,7 @@ def net_experiment3_0(dir_list, args):
 		if use_linear:
 			lm = LinearLayer(rng, 
 					n_in_list=data_triplet.input_dimensions()[0:2], 
-					n_out=len(label_alphabet), 
+					n_out=data_triplet.output_dimensions()[0], 
 					use_sparse=False, 
 					X_list=X_list[0:2], 
 					activation_fn=None)
@@ -756,24 +825,26 @@ def net_experiment3_0(dir_list, args):
 			blm = BilinearLayer(rng, 
 					n_in1=data_triplet.input_dimensions()[0],
 					n_in2=data_triplet.input_dimensions()[1], 
-					n_out=len(label_alphabet),
+					n_out=data_triplet.output_dimensions()[0],
 					X1=X_list[0], 
 					X2=X_list[1],
 					activation_fn=None)
 			layer_list.append(blm)
 		semantic_layer = GlueLayer(layer_list=layer_list, X_list=X_list, Y=T.lvector(),
-				activation_fn=T.nnet.softmax)
+				activation_fn=None if use_hinge else T.nnet.softmax)
 		cached_layer = LinearLayer(rng,
-				n_in_list=data_triplet.input_dimensions()[3:4],
-				n_out=len(label_alphabet),
+				n_in_list=data_triplet.input_dimensions()[2:3],
+				n_out=data_triplet.output_dimensions()[0],
+				use_sparse=False,
 				X_list=X_list[2:3],
-				activation_fn=T.nnet.softmax)
+				activation_fn=None if use_hinge else T.nnet.softmax)
 		moe = MixtureOfExperts(rng, 
 				n_in_list=data_triplet.input_dimensions(),
 				expert_list=[semantic_layer, cached_layer],
 				X_list=X_list,
 				Y=T.lvector())
-		trainer = AdagradTrainer(layer, layer.crossentropy, learning_rate, lr_smoother)
+		trainer = AdagradTrainer(moe, moe.hinge_loss if use_hinge else moe.crossentropy, 
+				learning_rate, lr_smoother)
 		start_time = timeit.default_timer()
 		best_iter, best_dev_acc, best_test_acc = \
 				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
@@ -793,6 +864,236 @@ def net_experiment3_0(dir_list, args):
 				}
 		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
 		
+
+
+def net_experiment3_additive_l(dir_list, args):
+	"""MOE = Baseline + Additive arg vectors
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	sense_lf = l.SecondLevelLabel()
+
+	if len(args) > 0 and args[0] == 'test':
+		print 'Using test mode'
+		dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+		dict_file = df.EmbeddingFeaturizer.TEST_WORD_EMBEDDING_FILE
+		num_reps = 2
+	else:
+		dict_file = df.EmbeddingFeaturizer.WORD_EMBEDDING_FILE
+		num_reps = 10
+	json_file = set_logger(experiment_name)
+
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+
+	word2vec = df.EmbeddingFeaturizer(dict_file)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = []
+		data.extend(word2vec.additive_args(relation_list))
+		data.extend(df.cached_features(relation_list, 'BaselineClassification'))
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=False, use_hinge=True)
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=False, use_hinge=False)
+
+def net_experiment3_additive_l_dnn(dir_list, args):
+	"""MOE = Baseline + Additive arg vectors
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	sense_lf = l.SecondLevelLabel()
+
+	if args[0] == 'test':
+		print 'Using test mode'
+		dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+		dict_file = df.EmbeddingFeaturizer.TEST_WORD_EMBEDDING_FILE
+		num_reps = 2
+		num_hidden_layers = 1
+	else:
+		dict_file = df.EmbeddingFeaturizer.WORD_EMBEDDING_FILE
+		num_reps = 10
+		num_hidden_layers = int(args[0])
+	json_file = set_logger(experiment_name+'_%sh' % num_hidden_layers)
+
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+	num_hidden_unit_list = [50, 200, 300, 600, 800] 
+
+	word2vec = df.EmbeddingFeaturizer(dict_file)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = []
+		data.extend(word2vec.additive_args(relation_list))
+		data.extend(df.cached_features(relation_list, 'BaselineClassification'))
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+
+	for num_hidden_units in num_hidden_unit_list:
+		_net_experiment3_dnn_helper(experiment_name, json_file, 
+				num_hidden_layers, num_hidden_units, num_reps, data_triplet, 
+				use_hinge=True)
+		_net_experiment3_dnn_helper(experiment_name, json_file, 
+				num_hidden_layers, num_hidden_units, num_reps, data_triplet, 
+				use_hinge=False)
+
+def net_experiment3_additive_l_dnn_v2(dir_list, args):
+	"""MOE = Baseline + Additive arg vectors
+
+	Add a hidden layer to the cached layer as well
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	sense_lf = l.SecondLevelLabel()
+
+	if args[0] == 'test':
+		print 'Using test mode'
+		dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+		dict_file = df.EmbeddingFeaturizer.TEST_WORD_EMBEDDING_FILE
+		num_reps = 2
+		num_hidden_layers = 1
+	else:
+		dict_file = df.EmbeddingFeaturizer.WORD_EMBEDDING_FILE
+		num_reps = 10
+		num_hidden_layers = int(args[0])
+	json_file = set_logger(experiment_name+'_%sh' % num_hidden_layers)
+
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+	num_hidden_unit_list = [50, 200, 300, 600, 800] 
+
+	word2vec = df.EmbeddingFeaturizer(dict_file)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = []
+		data.extend(word2vec.additive_args(relation_list))
+		data.extend(df.cached_features(relation_list, 'BaselineClassification'))
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+
+	for num_hidden_units in num_hidden_unit_list:
+		_net_experiment3_dnn_helper(experiment_name, json_file, 
+				num_hidden_layers, num_hidden_units, num_reps, data_triplet, 
+				use_hinge=True, noise_cache=True)
+		_net_experiment3_dnn_helper(experiment_name, json_file, 
+				num_hidden_layers, num_hidden_units, num_reps, data_triplet, 
+				use_hinge=False, noise_cache=True)
+
+
+
+def net_experiment3_additive_l_bl(dir_list, args):
+	"""MOE = Baseline + Additive arg vectors
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	json_file = set_logger(experiment_name)
+	sense_lf = l.SecondLevelLabel()
+
+	if len(args) > 0 and args[0] == 'test':
+		print 'Using test mode'
+		dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+		dict_file = df.EmbeddingFeaturizer.TEST_WORD_EMBEDDING_FILE
+		num_reps = 2
+	else:
+		dict_file = df.EmbeddingFeaturizer.WORD_EMBEDDING_FILE
+		num_reps = 10
+
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+
+	word2vec = df.EmbeddingFeaturizer(dict_file)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = []
+		data.extend(word2vec.additive_args(relation_list))
+		data.extend(df.cached_features(relation_list, 'BaselineClassification'))
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=True, use_hinge=True)
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=True, use_hinge=False)
+
+def net_experiment3_cdssm(dir_list, args):
+	"""MOE = Baseline + CDSSM arg vectors
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	json_file = set_logger(experiment_name)
+	sense_lf = l.SecondLevelLabel()
+
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+	num_reps = 20
+
+	data_list = []
+	for relation_list in relation_list_list:
+		data = []
+		data.extend(df.cdssm_feature(relation_list))
+		data.extend(df.cached_features(relation_list, 'BaselineClassification'))
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=False, use_hinge=True)
+	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
+			use_linear=True, use_bilinear=False, use_hinge=False)
+
+def net_lstm_test(dir_list, args):
+	"""The first LSTM experiment
+
+	Don't panic as it only uses the first argument 
+	but the results are really not half bad.
+
+	30% accuracy on the test set
+	"""
+	experiment_name = sys._getframe().f_code.co_name	
+	json_file = set_logger(experiment_name)
+	sense_lf = l.SecondLevelLabel()
+	dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+	#dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+
+	dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.npy'
+	vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50_vocab.txt'
+	wbm = WordEmbeddingMatrix(dict_file, vocab_file)
+
+	data_list = []
+	for relation_list in relation_list_list:
+		data = prep_serrated_matrix_relations(relation_list, wbm, 100)[0:2]
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+
+	num_reps = 30
+	for rep in xrange(num_reps):
+		random_seed = rep
+		rng = np.random.RandomState(random_seed)
+
+		#minibatch_size = 30
+		minibatch_size = np.random.randint(20, 60)
+		n_epochs = 200
+		learning_rate = 0.01
+		lr_smoother = 0.01
+
+		model = LSTM(rng, wbm, wbm.num_units, n_out=data_triplet.output_dimensions()[0], Y=T.lvector(),
+				activation_fn=T.nnet.softmax)
+		trainer = AdagradTrainer(model, model.crossentropy, learning_rate, lr_smoother)
+		start_time = timeit.default_timer()
+		best_iter, best_dev_acc, best_test_acc = \
+				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
+		end_time = timeit.default_timer()
+		print end_time - start_time 
+		print best_iter, best_dev_acc, best_test_acc
+		result_dict = {
+				'test accuracy': best_test_acc,
+				'best dev accuracy': best_dev_acc,
+				'best iter': best_iter,
+				'random seed': random_seed,
+				'minibatch size': minibatch_size,
+				'learning rate': learning_rate,
+				'lr smoother': lr_smoother,
+				'experiment name': experiment_name,
+				'cost function': 'crossentropy',
+				}
+		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
+
 
 if __name__ == '__main__':
 	experiment_name = sys.argv[1]
