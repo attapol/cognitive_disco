@@ -9,7 +9,7 @@ import theano.tensor as T
 
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
-		BilinearLayer, LinearLayer, GlueLayer, MJMModel, MixtureOfExperts
+		BilinearLayer, LinearLayer, GlueLayer, MJMModel, MixtureOfExperts, NeuralNet
 from cognitive_disco.nets.lstm import LSTM, prep_serrated_matrix_relations
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 import cognitive_disco.nets.util as util
@@ -110,7 +110,7 @@ def net_experiment0_3(dir_list, args):
 #
 
 def set_logger(file_name):
-	sys.stdout = open('%s.log' % file_name, 'w', 1)
+	#sys.stdout = open('%s.log' % file_name, 'w', 1)
 	json_file = open('%s.json' % file_name, 'w', 1)
 	return json_file
 
@@ -1035,6 +1035,169 @@ def net_experiment3_cdssm(dir_list, args):
 	_net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
 			use_linear=True, use_bilinear=False, use_hinge=False)
 
+def _get_wbm(num_units):
+	if num_units == 50:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.npy'
+		vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50_vocab.txt'
+	elif num_units == 100:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100.npy'
+		vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100_vocab.txt'
+	elif num_units == 300:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300.npy'
+		vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300_vocab.txt'
+	else:
+		# this will crash the next step and te's too lazy to make it throw an exception.
+		dict_file = None
+		vocab_file = None
+	wbm = WordEmbeddingMatrix(dict_file, vocab_file)
+	return wbm
+
+def net_experiment_lstm_l(dir_list, args):
+	"""
+
+	num units is the number of the units in the embedding (NOT HIDDEN LAYERS)
+	num hidden layers is the number of hidden layers
+	proj_type must be one of {mean_pool, sum_pool, max_pool, top}
+	"""
+	assert(len(args) == 3)
+	num_units = int(args[0])
+	num_hidden_layers = int(args[1])
+	proj_type = args[2]
+
+	experiment_name = sys._getframe().f_code.co_name	
+	json_file = set_logger('%s_%sunits_%sh_%s' % \
+			(experiment_name, num_units, num_hidden_layers, proj_type))
+	sense_lf = l.SecondLevelLabel()
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+
+	wbm = _get_wbm(num_units)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = prep_serrated_matrix_relations(relation_list, wbm, 30)
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+
+	num_reps = 25
+	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+			num_hidden_layers=0, num_hidden_units=0, use_hinge=True, proj_type=proj_type)
+	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+			num_hidden_layers=0, num_hidden_units=0, use_hinge=False, proj_type=proj_type)
+
+def net_experiment_lstm_bl(dir_list, args):
+	assert(len(args) == 3)
+	num_units = int(args[0])
+	proj_type = args[1]
+
+	experiment_name = sys._getframe().f_code.co_name	
+	json_file = set_logger('%s_%sunits_%s' % \
+			(experiment_name, num_units, num_hidden_layers, proj_type))
+	sense_lf = l.SecondLevelLabel()
+	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
+
+	wbm = _get_wbm(num_units)
+	data_list = []
+	for relation_list in relation_list_list:
+		data = prep_serrated_matrix_relations(relation_list, wbm, 30)
+		data_list.append(data)
+	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
+	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+
+	num_reps = 25
+	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+			num_hidden_layers=0, num_hidden_units=0,
+			use_hinge=True, proj_type=proj_type)
+	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+			num_hidden_layers=0, num_hidden_units=0,
+			use_hinge=False, proj_type=proj_type)
+
+def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, num_hidden_layers, 
+		num_hidden_units, use_hinge, proj_type, use_bl=False):
+
+	rng = np.random.RandomState(100)
+	arg1_model = LSTM(rng, wbm.num_units)
+	arg2_model = LSTM(rng, wbm.num_units)
+
+	if proj_type == 'max_pool':
+		projected_variables = [arg1_model.max_pooled_h, arg2_model.max_pooled_h]
+	elif proj_type == 'mean_pool':
+		projected_variables = [arg1_model.mean_pooled_h, arg2_model.mean_pooled_h]
+	elif proj_type == 'sum_pool':
+		projected_variables = [arg1_model.sum_pooled_h, arg2_model.sum_pooled_h]
+	elif proj_type == 'top':
+		projected_variables = [arg1_model.top_h, arg2_model.top_h]
+	else:
+		raise ValueError('Invalid projection type: %s' % proj_type)
+
+	if use_bl:
+		output_layer = BilinearLayer(rng, 
+				n_in1=wbm.num_units,
+				n_in2=wbm.num_units,
+				n_out=data_triplet.output_dimensions()[0],
+				X1=projected_variables[0],
+				X2=projected_variables[1],
+				Y=T.lvector(),
+				activation_fn=None if use_hinge else T.nnet.softmax)
+	else:
+		output_layer = LinearLayer(rng, 
+				n_in_list=[wbm.num_units, wbm.num_units],
+				n_out=data_triplet.output_dimensions()[0],
+				use_sparse=False,
+				X_list=projected_variables,
+				Y=T.lvector(),
+				activation_fn=None if use_hinge else T.nnet.softmax)
+
+	nn = NeuralNet()
+	layers = [arg1_model, arg2_model, output_layer]
+	nn.params.extend(arg1_model.params)
+	nn.params.extend(arg2_model.params)
+	nn.params.extend(output_layer.params)
+	nn.input.extend(arg1_model.input)
+	nn.input.extend(arg2_model.input)
+	nn.output.extend(output_layer.output)
+	nn.predict = output_layer.predict
+	nn.hinge_loss = output_layer.hinge_loss
+	nn.crossentropy = output_layer.crossentropy
+
+	learning_rate = 0.001
+	lr_smoother = 0.01
+	trainer = AdagradTrainer(nn,
+			nn.hinge_loss if use_hinge else nn.crossentropy,
+			learning_rate, lr_smoother, data_triplet, train_lstm=True)
+	
+	for rep in xrange(num_reps):
+		random_seed = rep
+		rng = np.random.RandomState(random_seed)
+		for layer in layers:
+			layer.reset(rng)
+		trainer.reset()
+		
+		minibatch_size = np.random.randint(20, 60)
+		n_epochs = 50
+
+
+		start_time = timeit.default_timer()
+		best_iter, best_dev_acc, best_test_acc = \
+				trainer.train_minibatch_triplet(minibatch_size, n_epochs, train_lstm=True)
+		end_time = timeit.default_timer()
+		print end_time - start_time 
+		print best_iter, best_dev_acc, best_test_acc
+		result_dict = {
+				'test accuracy': best_test_acc,
+				'best dev accuracy': best_dev_acc,
+				'best iter': best_iter,
+				'random seed': random_seed,
+				'minibatch size': minibatch_size,
+				'learning rate': learning_rate,
+				'lr smoother': lr_smoother,
+				'experiment name': experiment_name,
+				'num hidden units': num_hidden_units,
+				'num hidden layers': num_hidden_layers,
+				'cost function': 'hinge loss' if use_hinge else 'crossentropy',
+				'projection' : proj_type,
+				}
+		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
+
 def net_lstm_test(dir_list, args):
 	"""The first LSTM experiment
 
@@ -1072,12 +1235,13 @@ def net_lstm_test(dir_list, args):
 		learning_rate = 0.01
 		lr_smoother = 0.01
 
-		model = LSTM(rng, wbm, wbm.num_units, n_out=data_triplet.output_dimensions()[0], Y=T.lvector(),
+		model = LSTM(rng, wbm.num_units, n_out=data_triplet.output_dimensions()[0], Y=T.lvector(),
 				activation_fn=T.nnet.softmax)
 		trainer = AdagradTrainer(model, model.crossentropy, learning_rate, lr_smoother)
 		start_time = timeit.default_timer()
 		best_iter, best_dev_acc, best_test_acc = \
-				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
+				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet,
+						train_lstm=True)
 		end_time = timeit.default_timer()
 		print end_time - start_time 
 		print best_iter, best_dev_acc, best_test_acc
@@ -1098,5 +1262,6 @@ def net_lstm_test(dir_list, args):
 if __name__ == '__main__':
 	experiment_name = sys.argv[1]
 	dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+	#dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
 	globals()[experiment_name](dir_list, sys.argv[2:])
 	

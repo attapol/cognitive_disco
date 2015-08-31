@@ -90,56 +90,20 @@ class Trainer(object):
 		return self.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
 
 
-	def train_minibatch_triplet(self, minibatch_size, n_epochs, data_triplet):
+	def train_minibatch_triplet(self, minibatch_size, n_epochs, train_lstm=False):
 		"""Train with minibatch
 
 		The early stoping is on the last output variable accuracy only.
 		This is crazy stupid ugly solution but it should be ok. 
 		"""
-		data_triplet.assert_data_same_length()
-		assert(len(self.model.input) == data_triplet.num_input_variables())
-		assert(len(self.model.output) == data_triplet.num_output_variables())
-
-		index = T.lscalar() # index to minibatch
-		T_training_data = [theano.shared(x, borrow=True) for x in data_triplet.training_data]
-		T_training_data_label = [theano.shared(x, borrow=True) for x in data_triplet.training_data_label]
-
-		givens = {}
-		for i, output_var in enumerate(self.model.output):
-			givens[output_var] = \
-				T_training_data_label[i][index * minibatch_size: (index + 1) * minibatch_size]
-
-		if type(self.model) == lstm.LSTM:
-			givens[self.model.input[0]] = \
-				T_training_data[0][:,index * minibatch_size: (index + 1) * minibatch_size, :]
-			givens[self.model.input[1]] = \
-				T_training_data[1][:,index * minibatch_size: (index + 1) * minibatch_size]
-		else:
-			for i, input_var in enumerate(self.model.input):
-				givens[input_var] = \
-					T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
-
-
-		self.train_function = theano.function(
-				inputs=[index],
-				#outputs=[self.cost_function, self.model.mean_pooled_h, self.model.h],
-				outputs=self.cost_function,
-				updates=self.sgs_updates + self.adagrad_lr_updates + self.param_updates,
-				givens=givens
-				)
-
-		#ugly crap going on to compute accuracy on the last output variable only
-		accuracy = T.mean(T.eq(self.model.output[-1], self.model.predict[-1]))
-		self.eval_function = theano.function(inputs=self.model.input + self.model.output,
-				outputs=[accuracy, self.cost_function]
-				)
 
 		patience = 5000
 		patience_increase = 2.5 # wait this much longer when a new best is found
-		improvement_threshold = 0.9975
+		improvement_threshold = 1.0#  0.9975
 
-		n_train_batches = data_triplet.training_data[0].shape[0] / minibatch_size
+		n_train_batches = self.num_training_data / minibatch_size
 		validation_frequency = min(n_train_batches, patience / 2)
+		#validation_frequency = 1
 	
 		best_validation_loss = np.inf
 		test_score = 0 
@@ -155,7 +119,12 @@ class Trainer(object):
 			for minibatch_index in xrange(n_train_batches):
 				iteration = (epoch - 1) * n_train_batches  + minibatch_index
 				start_time = timeit.default_timer()
-				c = self.train_function(minibatch_index)
+				c = self.train_function(minibatch_index, minibatch_size)
+				if np.isnan(c):
+					print 'NaN found at batch %s after seeing %s samples' % \
+							(minibatch_index, iteration * minibatch_size)
+					done_looping =True
+					break
 				total_cost += c
 				end_time = timeit.default_timer()
 				if (iteration + 1) % validation_frequency == 0:
@@ -163,10 +132,10 @@ class Trainer(object):
 					average_cost = total_cost / num_samples_seen
 					print 'TRAIN: iteration %s : average cost =%s' % (iteration, average_cost)
 					dev_accuracy, c = \
-							self.eval_function(*data_triplet.dev_data_and_label_list())
+							self.eval_function(*self.data_triplet.dev_data_and_label_list())
 					print 'DEV: iteration %s : accuracy = %s ; cost =%s' % (iteration, dev_accuracy, c)
 					test_accuracy, c = \
-							self.eval_function(*data_triplet.test_data_and_label_list())
+							self.eval_function(*self.data_triplet.test_data_and_label_list())
 					print 'TEST: iteration %s : accuracy = %s ; cost =%s' % (iteration, test_accuracy, c)
 					if dev_accuracy > best_dev_acc:
 						if dev_accuracy * improvement_threshold > best_dev_acc:
@@ -182,28 +151,83 @@ class Trainer(object):
 
 class AdagradTrainer(Trainer):
 
-	def __init__(self, model, cost_function, learning_rate, lr_smoother):
+	def __init__(self, model, cost_function, learning_rate, lr_smoother, data_triplet,
+			train_lstm=False):
 		self.model = model
 		self.cost_function = cost_function 
 		self.learning_rate = learning_rate
 		self.lr_smoother = lr_smoother
+		self.data_triplet = data_triplet
 
-		gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
-		adagrad_rates = [theano.shared(value=np.zeros(param.get_value().shape).astype(config.floatX), borrow=True) 
+		#self.gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
+		self.gparams = [T.maximum(-5, T.minimum(5, T.grad(cost=cost_function, wrt=x))) 
+				for x in self.model.params]
+		self.sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape).astype(config.floatX), borrow=True) 
 				for param in self.model.params]
-		sum_gradient_squareds = [theano.shared(value=np.zeros(param.get_value().shape).astype(config.floatX), borrow=True) 
-				for param in self.model.params]
+
+		adagrad_rates = [learning_rate / (lr_smoother + T.sqrt(sgs)) 
+				for sgs in self.sum_gradient_squareds]
 
 		self.sgs_updates = [(sgs, sgs + T.square(gparam)) 
-			for sgs, gparam in zip(sum_gradient_squareds, gparams)]
+			for sgs, gparam in zip(self.sum_gradient_squareds, self.gparams)]
 
-		self.adagrad_lr_updates = [(adagrad_rate, 
-			adagrad_rate + learning_rate / (lr_smoother + T.sqrt(sum_gradient_squared)))
-			for adagrad_rate, sum_gradient_squared in zip(adagrad_rates, sum_gradient_squareds)]
 
 		self.param_updates = [(param, param - adagrad_rate * gparam) 
-				for param, gparam, adagrad_rate in zip(self.model.params, gparams, adagrad_rates)]
+				for param, gparam, adagrad_rate in zip(self.model.params, self.gparams, adagrad_rates)]
+		self.train_function = None
+		self.eval_function = None
 
+		data_triplet.assert_data_same_length()
+		assert(len(self.model.input) == data_triplet.num_input_variables())
+		assert(len(self.model.output) == data_triplet.num_output_variables())
+
+		index = T.lscalar() # index to minibatch
+		minibatch_size = T.lscalar() # index to minibatch
+		T_training_data = [theano.shared(x, borrow=True) for x in data_triplet.training_data]
+		T_training_data_label = [theano.shared(x, borrow=True) for x in data_triplet.training_data_label]
+		self.num_training_data = len(data_triplet.training_data_label[0])
+
+		givens = {}
+		for i, output_var in enumerate(self.model.output):
+			givens[output_var] = \
+				T_training_data_label[i][index * minibatch_size: (index + 1) * minibatch_size]
+
+		if train_lstm:
+			givens[self.model.input[0]] = \
+				T_training_data[0][:,index * minibatch_size: (index + 1) * minibatch_size, :]
+			givens[self.model.input[1]] = \
+				T_training_data[1][:,index * minibatch_size: (index + 1) * minibatch_size]
+
+			if len(self.model.input) >= 4:
+				givens[self.model.input[2]] = \
+					T_training_data[2][:,index * minibatch_size: (index + 1) * minibatch_size, :]
+				givens[self.model.input[3]] = \
+					T_training_data[3][:,index * minibatch_size: (index + 1) * minibatch_size]
+				for i, input_var in enumerate(self.model.input[4:]):
+					givens[input_var] = \
+						T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
+		else:
+			for i, input_var in enumerate(self.model.input):
+				givens[input_var] = \
+					T_training_data[i][index * minibatch_size: (index + 1) * minibatch_size]
+
+
+		self.train_function = theano.function(
+				inputs=[index, minibatch_size],
+				outputs=self.cost_function,
+				updates=self.sgs_updates + self.param_updates,
+				givens=givens
+				)
+
+		#ugly crap going on to compute accuracy on the last output variable only
+		accuracy = T.mean(T.eq(self.model.output[-1], self.model.predict[-1]))
+		self.eval_function = theano.function(inputs=self.model.input + self.model.output,
+				outputs=[accuracy, self.cost_function]
+				)
+
+	def reset(self):
+		for sgs in self.sum_gradient_squareds:
+			sgs.set_value(np.zeros(sgs.get_value().shape, dtype=theano.config.floatX))
 
 
 class SGDTrainer(Trainer):
@@ -213,5 +237,5 @@ class SGDTrainer(Trainer):
 		self.cost_function = cost_function 
 		self.learning_rate = learning_rate
 
-		gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
+		self.gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
 

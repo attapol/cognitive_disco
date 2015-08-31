@@ -109,6 +109,9 @@ class LinearLayer(object):
 
 	def __init__(self, rng, n_in_list, n_out, use_sparse, X_list=None, Y=None, 
 			W_list=None, b=None, activation_fn=T.tanh):
+		self.n_in_list = n_in_list
+		self.n_out = n_out
+
 		if W_list is None:
 			W_list = []
 			total_n_in = np.sum(n_in_list)
@@ -161,8 +164,23 @@ class LinearLayer(object):
 					lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
 					sequences=[self.activation, Y])
 			self.hinge_loss = hinge_loss_instance.sum()
+			#self.crossentropy = -T.mean(T.log(self.activation[T.arange(self.activation.shape[0]), Y]))
 			self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
+	def reset(self, rng):
+		for W, n_in in zip(self.W_list, self.n_in_list):
+			total_n_in = np.sum(self.n_in_list)
+			W_values = np.asarray(
+				rng.uniform(
+					low=-np.sqrt(6. / (total_n_in + self.n_out)),
+					high=np.sqrt(6. / (total_n_in + self.n_out)),
+					size=(n_in, self.n_out)
+				),
+				dtype=theano.config.floatX
+			)
+			W.set_value(W_values)
+		b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
+		self.b.set_value(b_values)
 
 
 class BilinearLayer(object):
@@ -172,7 +190,11 @@ class BilinearLayer(object):
 	We have to go around this isssue.
 	"""
 
-	def __init__(self, rng, n_in1, n_in2, n_out, X1=None, X2=None, Y=None, W=None, b=None, activation_fn=T.tanh):
+	def __init__(self, rng, n_in1, n_in2, n_out, 
+			X1=None, X2=None, Y=None, W=None, b=None, activation_fn=T.tanh):
+		self.n_in1 = n_in1
+		self.n_in2 = n_in2
+		self.n_out = n_out
 		if W is None:
 			W_values = np.asarray(
 				rng.uniform(
@@ -210,6 +232,20 @@ class BilinearLayer(object):
 					sequences=[self.activation, Y])
 			self.hinge_loss = hinge_loss_instance.sum()
 			self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
+
+	def reset(self, rng):
+		W_values = np.asarray(
+			rng.uniform(
+				low=-np.sqrt(6. / (self.n_in1 + self.n_in2 + self.n_out)),
+				high=np.sqrt(6. / (self.n_in1 + self.n_in2 + self.n_out)),
+				size=(self.n_out, self.n_in1, self.n_in2)
+			),
+			dtype=theano.config.floatX
+		)
+		self.W.set_value(W_values)
+		b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
+		self.b.set_value(b_values)
+
 
 def test_bilinear():
 	num_features = 50

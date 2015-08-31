@@ -28,7 +28,23 @@ def np_floatX(data):
 
 class LSTM(object):
 
-	def __init__(self, rng, word_matrix, dim_proj, n_out=None, X=None, Y=None, activation_fn=None):
+	def reset(self, rng):
+		W_values = np.concatenate([self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj)], axis=1)
+		U_values = np.concatenate([self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj),
+							self.square_weight(self.dim_proj)], axis=1)
+		b_values = np.zeros((4 * self.dim_proj,)).astype(config.floatX)
+
+		self.W.set_value(W_values)
+		self.U.set_value(U_values)
+		self.b.set_value(b_values)
+
+
+	def __init__(self, rng, dim_proj, n_out=None, X=None, Y=None, activation_fn=None):
 		self.params = []#a list of paramter variables
 		self.input = [] #a list of input variables
 		self.output = []#a list of output variables
@@ -72,8 +88,10 @@ class LSTM(object):
 
 		self.h = self.project(X, mask)
 
+		self.max_pooled_h = (self.h * mask[:, :, None]).max(axis=0) 
 		self.sum_pooled_h = (self.h * mask[:, :, None]).sum(axis=0) 
 		self.mean_pooled_h = self.sum_pooled_h / mask.sum(axis=0)[:, None]
+		self.top_h = self.h[mask.sum(axis=0).astype('int64')-1,T.arange(n_samples), :]
 
 		# connect to logistic regression
 		if Y is None:
