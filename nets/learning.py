@@ -102,8 +102,7 @@ class Trainer(object):
 		improvement_threshold = 1.0#  0.9975
 
 		n_train_batches = self.num_training_data / minibatch_size
-		validation_frequency = min(n_train_batches, patience / 2)
-		#validation_frequency = 1
+		validation_frequency = min(n_train_batches / 4, patience / 2)
 	
 		best_validation_loss = np.inf
 		test_score = 0 

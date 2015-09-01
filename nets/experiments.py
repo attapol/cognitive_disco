@@ -110,7 +110,7 @@ def net_experiment0_3(dir_list, args):
 #
 
 def set_logger(file_name):
-	#sys.stdout = open('%s.log' % file_name, 'w', 1)
+	sys.stdout = open('%s.log' % file_name, 'w', 1)
 	json_file = open('%s.json' % file_name, 'w', 1)
 	return json_file
 
@@ -1052,21 +1052,37 @@ def _get_wbm(num_units):
 	wbm = WordEmbeddingMatrix(dict_file, vocab_file)
 	return wbm
 
-def net_experiment_lstm_l(dir_list, args):
+def net_experiment_lstm(dir_list, args):
 	"""
 
-	num units is the number of the units in the embedding (NOT HIDDEN LAYERS)
-	num hidden layers is the number of hidden layers
-	proj_type must be one of {mean_pool, sum_pool, max_pool, top}
+	Args : Five required arguments
+		linear (l) or bilinear(bl)
+		num units is the number of the units in the embedding (NOT HIDDEN LAYERS)
+		num hidden layers is the number of hidden layers
+		proj_type must be one of {mean_pool, sum_pool, max_pool, top}
+		shared 
 	"""
-	assert(len(args) == 3)
-	num_units = int(args[0])
-	num_hidden_layers = int(args[1])
-	proj_type = args[2]
+	assert(len(args) == 5)
+
+	if args[0] == 'bl':
+		use_bl = True
+	elif args[0] == 'l':
+		use_bl = False
+	else:
+		raise ValueError('First argument must be l or bl')
+	num_units = int(args[1])
+	num_hidden_layers = int(args[2])
+	proj_type = args[3]
+	if args[4] == 'shared':
+		arg_shared_weights = True
+	elif args[4] == 'noshared':
+		arg_shared_weights = False
+	else:
+		raise ValueError('Last argument must be shared or noshared')
 
 	experiment_name = sys._getframe().f_code.co_name	
-	json_file = set_logger('%s_%sunits_%sh_%s' % \
-			(experiment_name, num_units, num_hidden_layers, proj_type))
+	json_file = set_logger('%s_%s_%sunits_%sh_%s_%s' % \
+			(experiment_name, args[0], num_units, num_hidden_layers, proj_type, args[4]))
 	sense_lf = l.SecondLevelLabel()
 	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
 
@@ -1084,39 +1100,15 @@ def net_experiment_lstm_l(dir_list, args):
 	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
 			num_hidden_layers=0, num_hidden_units=0, use_hinge=False, proj_type=proj_type)
 
-def net_experiment_lstm_bl(dir_list, args):
-	assert(len(args) == 3)
-	num_units = int(args[0])
-	proj_type = args[1]
-
-	experiment_name = sys._getframe().f_code.co_name	
-	json_file = set_logger('%s_%sunits_%s' % \
-			(experiment_name, num_units, num_hidden_layers, proj_type))
-	sense_lf = l.SecondLevelLabel()
-	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
-
-	wbm = _get_wbm(num_units)
-	data_list = []
-	for relation_list in relation_list_list:
-		data = prep_serrated_matrix_relations(relation_list, wbm, 30)
-		data_list.append(data)
-	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
-	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
-
-	num_reps = 25
-	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
-			num_hidden_layers=0, num_hidden_units=0,
-			use_hinge=True, proj_type=proj_type)
-	_net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
-			num_hidden_layers=0, num_hidden_units=0,
-			use_hinge=False, proj_type=proj_type)
-
 def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, num_hidden_layers, 
-		num_hidden_units, use_hinge, proj_type, use_bl=False):
+		num_hidden_units, use_hinge, proj_type, use_bl=False, arg_shared_weights=False):
 
 	rng = np.random.RandomState(100)
 	arg1_model = LSTM(rng, wbm.num_units)
-	arg2_model = LSTM(rng, wbm.num_units)
+	if arg_shared_weights:
+		arg2_model = LSTM(rng, wbm.num_units, W=arg1_model.W, U=arg1_model.U, b=arg1_model.b)
+	else:
+		arg2_model = LSTM(rng, wbm.num_units)
 
 	if proj_type == 'max_pool':
 		projected_variables = [arg1_model.max_pooled_h, arg2_model.max_pooled_h]
@@ -1150,7 +1142,8 @@ def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, num_hidd
 	nn = NeuralNet()
 	layers = [arg1_model, arg2_model, output_layer]
 	nn.params.extend(arg1_model.params)
-	nn.params.extend(arg2_model.params)
+	if not arg_shared_weights:
+		nn.params.extend(arg2_model.params)
 	nn.params.extend(output_layer.params)
 	nn.input.extend(arg1_model.input)
 	nn.input.extend(arg2_model.input)
@@ -1175,7 +1168,6 @@ def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, num_hidd
 		minibatch_size = np.random.randint(20, 60)
 		n_epochs = 50
 
-
 		start_time = timeit.default_timer()
 		best_iter, best_dev_acc, best_test_acc = \
 				trainer.train_minibatch_triplet(minibatch_size, n_epochs, train_lstm=True)
@@ -1198,50 +1190,96 @@ def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, num_hidd
 				}
 		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
 
-def net_lstm_test(dir_list, args):
-	"""The first LSTM experiment
-
-	Don't panic as it only uses the first argument 
-	but the results are really not half bad.
-
-	30% accuracy on the test set
-	"""
+# net_experiment4 series
+# Investigate the effectiveness of hidden layer in abstracting features
+# We only look at ways of pooling {mean, max, sum, top}  and CDSSM
+# proj_type must be one of {mean_pool, sum_pool, max_pool, top}
+#
+def net_experiment4_1(dir_list, args):
 	experiment_name = sys._getframe().f_code.co_name	
-	json_file = set_logger(experiment_name)
 	sense_lf = l.SecondLevelLabel()
-	dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
-	#dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+	num_units = int(args[0])
+	num_hidden_layers = int(args[1])
+	projection = args[2]
+
+	json_file = set_logger('%s_%sunits_%sh_%s' % \
+			(experiment_name, num_units, num_hidden_layers, projection))
+
 	relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
-
-	dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.npy'
-	vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50_vocab.txt'
-	wbm = WordEmbeddingMatrix(dict_file, vocab_file)
-
-	data_list = []
-	for relation_list in relation_list_list:
-		data = prep_serrated_matrix_relations(relation_list, wbm, 100)[0:2]
-		data_list.append(data)
+	word2vec_ff = _get_word2vec_ff(num_units, projection)
+	data_list = [word2vec_ff(relation_list) for relation_list in relation_list_list]
 	label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
 	data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
+	num_hidden_unit_list = [50, 200, 300, 400] 
+	num_reps = 20
+	for num_hidden_unit in num_hidden_unit_list:
+		_net_experiment4_helper(json_file, num_hidden_layers, num_hidden_unit, num_reps,
+				data_triplet, True)
+		_net_experiment4_helper(json_file, num_hidden_layers, num_hidden_unit, num_reps,
+				data_triplet, False)
 
-	num_reps = 30
+
+def _net_experiment4_helper(json_file, num_hidden_layers, num_hidden_units, num_reps,
+		data_triplet, use_hinge):
+	n_epochs = 30
+	learning_rate = 0.01
+	lr_smoother = 0.01
+	rng = np.random.RandomState(100)
+	X_list = [T.matrix(), T.matrix()]
+	if num_hidden_layers == 0:
+		first_layer = LinearLayer(rng, 
+			n_in_list=data_triplet.input_dimensions(),
+			n_out=data_triplet.output_dimensions()[0],
+			use_sparse=False, 
+			X_list=X_list, 
+			Y=T.lvector(),
+			activation_fn=None if use_hinge else T.nnet.softmax)
+	else:
+		first_layer = LinearLayer(rng, 
+			n_in_list=data_triplet.input_dimensions(),
+			n_out=num_hidden_units,
+			use_sparse=False, 
+			X_list=X_list, 
+			activation_fn=T.tanh)
+	top_layer = first_layer
+	layers = [first_layer]
+	for i in range(num_hidden_layers):
+		is_top_layer = i == (num_hidden_layers - 1)
+		if is_top_layer:
+			hidden_layer = LinearLayer(rng,
+				n_in_list=[num_hidden_units], 
+				n_out=data_triplet.output_dimensions()[0], 
+				use_sparse=False, 
+				X_list=[top_layer.activation], 
+				Y=T.lvector(),
+				activation_fn=None if use_hinge else T.nnet.softmax)
+		else:
+			hidden_layer = LinearLayer(rng,
+				n_in_list=[num_hidden_units], 
+				n_out=num_hidden_units, 
+				use_sparse=False, 
+				X_list=[top_layer.activation], 
+				activation_fn=T.tanh)
+		hidden_layer.params.extend(top_layer.params)
+		layers.append(hidden_layer)
+		top_layer = hidden_layer
+	top_layer.input= X_list	
+	trainer = AdagradTrainer(top_layer, 
+			top_layer.hinge_loss if use_hinge else top_layer.crossentropy, 
+			learning_rate, lr_smoother, data_triplet, train_lstm=False)
+
 	for rep in xrange(num_reps):
 		random_seed = rep
 		rng = np.random.RandomState(random_seed)
-
-		#minibatch_size = 30
+		for layer in layers:
+			layer.reset(rng)
+		trainer.reset()
+		
 		minibatch_size = np.random.randint(20, 60)
-		n_epochs = 200
-		learning_rate = 0.01
-		lr_smoother = 0.01
 
-		model = LSTM(rng, wbm.num_units, n_out=data_triplet.output_dimensions()[0], Y=T.lvector(),
-				activation_fn=T.nnet.softmax)
-		trainer = AdagradTrainer(model, model.crossentropy, learning_rate, lr_smoother)
 		start_time = timeit.default_timer()
 		best_iter, best_dev_acc, best_test_acc = \
-				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet,
-						train_lstm=True)
+				trainer.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
 		end_time = timeit.default_timer()
 		print end_time - start_time 
 		print best_iter, best_dev_acc, best_test_acc
@@ -1254,9 +1292,34 @@ def net_lstm_test(dir_list, args):
 				'learning rate': learning_rate,
 				'lr smoother': lr_smoother,
 				'experiment name': experiment_name,
-				'cost function': 'crossentropy',
+				'cost function': 'hinge' if use_hinge else 'crossentropy',
+				'num hidden layers': num_hidden_layers,
+				'num hidden units': num_hidden_units,
 				}
 		json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
+
+
+def _get_word2vec_ff(num_units, projection):
+	if num_units == 50:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.txt'
+	elif num_units == 100:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100.txt'
+	elif num_units == 300:
+		dict_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300.txt'
+	else:
+		raise ValueError('num units must be {50, 100, 300}. Got %s ' % num_units)
+
+	word2vec = df.EmbeddingFeaturizer(dict_file)
+	if projection == 'mean_pool':
+		return word2vec.mean_args
+	elif projection == 'sum_pool':
+		return word2vec.additive_args
+	elif projection == 'max_pool':
+		return word2vec.max_args
+	elif projection == 'top':
+		return word2vec.top_args
+	else:
+		raise ValueError('projection must be one of {mean_pool, top, max_pool, top}. Got %s ' % projection)
 
 
 if __name__ == '__main__':

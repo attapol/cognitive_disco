@@ -44,7 +44,8 @@ class LSTM(object):
 		self.b.set_value(b_values)
 
 
-	def __init__(self, rng, dim_proj, n_out=None, X=None, Y=None, activation_fn=None):
+	def __init__(self, rng, dim_proj, n_out=None, X=None, Y=None, 
+			W=None, U=None, b=None, activation_fn=None):
 		self.params = []#a list of paramter variables
 		self.input = [] #a list of input variables
 		self.output = []#a list of output variables
@@ -56,19 +57,29 @@ class LSTM(object):
 		self.rng = rng
 
 		#LSTM parameters
-		W_values = np.concatenate([self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj)], axis=1)
-		U_values = np.concatenate([self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj),
-							self.square_weight(self.dim_proj)], axis=1)
-		b_values = np.zeros((4 * self.dim_proj,)).astype(config.floatX)
+		if W is None:
+			W_values = np.concatenate([self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj)], axis=1)
+			self.W = theano.shared(W_values, borrow=True)
+		else:
+			self.W = W
 
-		self.W = theano.shared(W_values, borrow=True)
-		self.U = theano.shared(U_values, borrow=True)
-		self.b = theano.shared(b_values, borrow=True)
+		if U is None:
+			U_values = np.concatenate([self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj),
+								self.square_weight(self.dim_proj)], axis=1)
+			self.U = theano.shared(U_values, borrow=True)
+		else:
+			self.U = U 
+
+		if b is None:
+			b_values = np.zeros((4 * self.dim_proj,)).astype(config.floatX)
+			self.b = theano.shared(b_values, borrow=True)
+		else:
+			self.b = b
 
 		# Logistic regression parameters
 		if Y is None:

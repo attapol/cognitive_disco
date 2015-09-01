@@ -32,6 +32,36 @@ class EmbeddingFeaturizer(object):
 			for x in relation_list])
 		return [arg1_matrix, arg2_matrix]
 
+	def mean_args(self, relation_list):	
+		num_relations = len(relation_list)
+		num_units = self.word_embedding_dict.num_units
+		
+		arg1_matrix = np.array([self.create_arg_matrix(x.arg_tokens(1)).mean(0) 
+			for x in relation_list])
+		arg2_matrix = np.array([self.create_arg_matrix(x.arg_tokens(2)).mean(0) 
+			for x in relation_list])
+		return [arg1_matrix, arg2_matrix]
+
+	def max_args(self, relation_list):
+		num_relations = len(relation_list)
+		num_units = self.word_embedding_dict.num_units
+		
+		arg1_matrix = np.array([self.create_arg_matrix(x.arg_tokens(1)).max(0) 
+			for x in relation_list])
+		arg2_matrix = np.array([self.create_arg_matrix(x.arg_tokens(2)).max(0) 
+			for x in relation_list])
+		return [arg1_matrix, arg2_matrix]
+
+	def top_args(self, relation_list):
+		num_relations = len(relation_list)
+		num_units = self.word_embedding_dict.num_units
+		
+		arg1_matrix = np.array([self.create_arg_matrix(x.arg_tokens(1))[-1,:]
+			for x in relation_list])
+		arg2_matrix = np.array([self.create_arg_matrix(x.arg_tokens(2))[-1,:]
+			for x in relation_list])
+		return [arg1_matrix, arg2_matrix]
+
 def cdssm_feature(relation_list):
 	num_relations = len(relation_list)
 	num_units = len(relation_list[0].relation_dict['Arg1']['CDSSMTarget']) * 2
