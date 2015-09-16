@@ -1,3 +1,4 @@
+import numpy as np
 from nltk import Tree
 
 
@@ -7,13 +8,13 @@ def reverse_toposort(tree_string):
     Always go from the leaves first and then build up
     from the bottom up.
     """
-    tree = Tree(tree_string)
+    tree = Tree(tree_string)[0]
     btree = binarize_tree(tree)
     num_leaves = tag_leaves(btree)
     ordering_list = [(i, 0, 0) for i in range(num_leaves)]
     num_nodes = recurs_reverse_toposort(btree, num_leaves, ordering_list)
     assert(num_nodes == (2 * num_leaves - 1))
-    return ordering_list
+    return np.array(ordering_list, dtype='int64')
 
 
 def find_parse_tree(relation, arg_pos, parses):
@@ -24,7 +25,7 @@ def find_parse_tree(relation, arg_pos, parses):
     elif arg_pos == 2:
         arg_token_addresses = _truncate_to_first_sentence(arg_token_addresses)
     sentence_index = arg_token_addresses[0][3]
-    return parses['sentences'][sentence_index]['parsetree']
+    return parses[relation.doc_id]['sentences'][sentence_index]['parsetree']
 
 
 def tag_leaves(t):
@@ -70,10 +71,13 @@ def binarize_tree(t):
     Returns a new tree. The original tree is intact.
     """
     def recurs_binarize_tree(t):
+        print t
         if t.height() <= 2:
             return t[0]
 
-        if len(t) == 2:
+        if len(t) == 1:
+            return recurs_binarize_tree(t[0])
+        elif len(t) == 2:
             new_children = []
             for i, child in enumerate(t):
                 new_children.append(recurs_binarize_tree(child))
