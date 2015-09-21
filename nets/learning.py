@@ -113,6 +113,9 @@ class Trainer(object):
             for minibatch_index in xrange(n_train_batches):
                 iteration = (epoch - 1) * n_train_batches  + minibatch_index
                 start_time = timeit.default_timer()
+                #misc = self.misc_function(minibatch_index, minibatch_size)
+                #print misc
+
                 c = self.train_function(minibatch_index, minibatch_size)
                 if np.isnan(c):
                     print 'NaN found at batch %s after seeing %s samples' % \
@@ -218,6 +221,11 @@ class AdagradTrainer(Trainer):
         self.eval_function = \
                 theano.function(inputs=self.model.input + self.model.output, 
                         outputs=[accuracy, self.cost_function])
+
+        #self.misc_function = theano.function(
+                #inputs=[index, minibatch_size],
+                #outputs=self.model.layers[2].input[0],
+                #givens=givens)
 
     def reset(self):
         for sgs in self.sum_gradient_squareds:

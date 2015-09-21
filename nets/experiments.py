@@ -1149,14 +1149,12 @@ def net_experiment_tree_lstm(dir_list, args):
     sense_lf = l.SecondLevelLabel()
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
-    parses_list = [json.load(open('%s/pdtb-parses-plus.json' % x)) 
-            for x in dir_list]
 
     wbm = _get_wbm(num_units)
     data_list = []
-    for relation_list, parses in zip(relation_list_list, parses_list):
+    for relation_list in relation_list_list:
         data = prep_tree_lstm_serrated_matrix_relations(
-                relation_list, parses, wbm, 60)
+                relation_list, wbm, 100)
         data_list.append(data)
 
     label_vectors, label_alphabet = \
@@ -1164,7 +1162,7 @@ def net_experiment_tree_lstm(dir_list, args):
     data_triplet = DataTriplet(
             data_list, [[x] for x in label_vectors], [label_alphabet])
 
-    num_reps = 10
+    num_reps = 15
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
             else [50, 200, 300, 400] 
     for num_hidden_units in num_hidden_unit_list:
@@ -1241,6 +1239,7 @@ def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps,
     nn.params.extend(output_layer.params)
     for hidden_layer in hidden_layers:
         nn.params.extend(hidden_layer.params)
+    nn.layers = layers
 
     nn.input.extend(arg1_model.input)
     nn.input.extend(arg2_model.input)
@@ -1434,7 +1433,7 @@ def net_experiment5_1(dir_list, args):
 
 if __name__ == '__main__':
     experiment_name = sys.argv[1]
-    #dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
-    dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+    dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+    #dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
     globals()[experiment_name](dir_list, sys.argv[2:])
     

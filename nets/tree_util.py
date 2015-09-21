@@ -2,22 +2,21 @@ import numpy as np
 from nltk import Tree
 
 
-def reverse_toposort(tree_string):
+def reverse_toposort(tree):
     """Reverse topological sorting
 
     Always go from the leaves first and then build up
     from the bottom up.
     """
-    tree = Tree(tree_string)[0]
     btree = binarize_tree(tree)
     num_leaves = tag_leaves(btree)
     ordering_list = [(i, 0, 0) for i in range(num_leaves)]
     num_nodes = recurs_reverse_toposort(btree, num_leaves, ordering_list)
     assert(num_nodes == (2 * num_leaves - 1))
-    return np.array(ordering_list, dtype='int64')
+    return np.array(ordering_list, dtype='int64'), num_leaves
 
 
-def find_parse_tree(relation, arg_pos, parses):
+def find_parse_tree(relation, arg_pos):
     assert arg_pos == 1 or arg_pos == 2
     arg_token_addresses = relation.arg_token_addresses(arg_pos)
     if arg_pos == 1:
@@ -25,8 +24,29 @@ def find_parse_tree(relation, arg_pos, parses):
     elif arg_pos == 2:
         arg_token_addresses = _truncate_to_first_sentence(arg_token_addresses)
     sentence_index = arg_token_addresses[0][3]
-    return parses[relation.doc_id]['sentences'][sentence_index]['parsetree']
+    parse_tree_string = relation.parse[relation.doc_id]['sentences'][sentence_index]['parsetree']
+    parse_tree = Tree(parse_tree_string)[0]
+    print parse_tree_string
+    return parse_tree
+    #first_token = arg_token_addresses[0][4]
+    #last_token = arg_token_addresses[-1][4]
+    #tp = parse_tree.treeposition_spanning_leaves(first_token, last_token)
+    #print parse_tree[tp]
+    #return parse_tree[tp]
 
+def left_branching_tree(relation, arg_pos):
+    assert arg_pos == 1 or arg_pos == 2
+    arg_tokens = relation.arg_tokens(arg_pos)
+    leaves = [Tree('(-1 %s)' % t) for t in arg_tokens]
+    root = None
+    for i, leaf in enumerate(leaves):
+        if i == 0:
+            root = leaf
+        else:
+            root = Tree(-1, [root, leaf])
+    print 'left branching'
+    print root
+    return root
 
 def tag_leaves(t):
     """Tag the leaf nodes with indices in the linear order
@@ -71,7 +91,6 @@ def binarize_tree(t):
     Returns a new tree. The original tree is intact.
     """
     def recurs_binarize_tree(t):
-        print t
         if t.height() <= 2:
             return t[0]
 
