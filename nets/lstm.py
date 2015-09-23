@@ -1,4 +1,3 @@
-from nltk import Tree
 import numpy as np
 import theano
 from theano import config
@@ -82,7 +81,7 @@ class BinaryTreeLSTM(LSTM):
         self.max_pooled_h = (self.h * c_mask[:, :, None]).max(axis=0) 
         self.sum_pooled_h = (self.h * c_mask[:, :, None]).sum(axis=0) 
         self.mean_pooled_h = self.sum_pooled_h / c_mask.sum(axis=0)[:, None]
-        self.top_h = self.h[c_mask.sum(axis=0).astype('int64') - 1,
+        self.top_h = self.h[2 * word_mask.sum(axis=0).astype('int64') ,
                 T.arange(n_samples), :]
 
     def reset(self, rng):
