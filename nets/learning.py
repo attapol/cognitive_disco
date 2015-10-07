@@ -35,9 +35,9 @@ class DataTriplet(object):
         assert(len(self.training_data_label) == len(self.dev_data_label))    
         assert(len(self.test_data_label) == len(self.dev_data_label))    
 
-        self._check_num_rows(self.training_data)
-        self._check_num_rows(self.dev_data)
-        self._check_num_rows(self.test_data)
+        #self._check_num_rows(self.training_data)
+        #self._check_num_rows(self.dev_data)
+        #self._check_num_rows(self.test_data)
 
         self._check_num_rows(self.training_data_label)
         self._check_num_rows(self.dev_data_label)
@@ -131,12 +131,12 @@ class Trainer(object):
                             (iteration, average_cost)
 
                     dev_data = self.data_triplet.dev_data_and_label_list()
-                    dev_accuracy, c = self.eval_function(*dev_data)
+                    dev_accuracy, c = self.eval_function_dev(*dev_data)
                     print 'DEV: iteration %s : accuracy = %s ; cost =%s' % \
                             (iteration, dev_accuracy, c)
 
                     test_data = self.data_triplet.test_data_and_label_list()
-                    test_accuracy, c = self.eval_function(*test_data)
+                    test_accuracy, c = self.eval_function_test(*test_data)
                     print 'TEST: iteration %s : accuracy = %s ; cost =%s' % \
                             (iteration, test_accuracy, c)
                     if dev_accuracy > best_dev_acc:
@@ -162,11 +162,14 @@ class AdagradTrainer(Trainer):
         self.lr_smoother = lr_smoother
         self.data_triplet = data_triplet
 
+        print 'Taking gradient...'
         #self.gparams = [T.grad(cost=cost_function, wrt=x) 
+                #for x in self.model.params]
+        self.gparams = T.grad(cost_function, self.model.params)
+
+        #self.gparams = [\
+        #        T.maximum(-5, T.minimum(5, T.grad(cost=cost_function, wrt=x))) 
         #        for x in self.model.params]
-        self.gparams = [\
-                T.maximum(-5, T.minimum(5, T.grad(cost=cost_function, wrt=x))) 
-                for x in self.model.params]
         self.sum_gradient_squareds = [
                 theano.shared(value=np.zeros(param.get_value().shape).\
                         astype(config.floatX), borrow=True) 
@@ -183,7 +186,8 @@ class AdagradTrainer(Trainer):
                 for param, gparam, adagrad_rate in 
                 zip(self.model.params, self.gparams, adagrad_rates)]
         self.train_function = None
-        self.eval_function = None
+        self.dev_eval_function = None
+        self.test_eval_function = None
 
         data_triplet.assert_data_same_length()
         assert(len(self.model.input) == data_triplet.num_input_variables())
@@ -210,17 +214,22 @@ class AdagradTrainer(Trainer):
         for i, output_var in enumerate(self.model.output):
             givens[output_var] = T_training_data_label[i][start_idx:end_idx]
 
+        print 'Compiling training function...'
         self.train_function = theano.function(
                 inputs=[index, minibatch_size],
                 outputs=self.cost_function,
                 updates=self.sgs_updates + self.param_updates,
-                givens=givens)
+                givens=givens,
+                on_unused_input='warn')
 
         #ugly crap going on to compute accuracy on the last output variable only
         accuracy = T.mean(T.eq(self.model.output[-1], self.model.predict[-1]))
-        self.eval_function = \
+        self.eval_function_dev = \
                 theano.function(inputs=self.model.input + self.model.output, 
-                        outputs=[accuracy, self.cost_function])
+                        outputs=[accuracy, self.cost_function],
+                        on_unused_input='warn')
+        self.eval_function_test = self.eval_function_dev
+        print 'Adagrad finished compiling...'
 
         #self.misc_function = theano.function(
                 #inputs=[index, minibatch_size],

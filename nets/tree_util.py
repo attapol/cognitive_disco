@@ -26,7 +26,6 @@ def find_parse_tree(relation, arg_pos):
     sentence_index = arg_token_addresses[0][3]
     parse_tree_string = relation.parse[relation.doc_id]['sentences'][sentence_index]['parsetree']
     parse_tree = Tree(parse_tree_string)[0]
-    print parse_tree_string
     return parse_tree
     #first_token = arg_token_addresses[0][4]
     #last_token = arg_token_addresses[-1][4]
@@ -44,8 +43,6 @@ def left_branching_tree(relation, arg_pos):
             root = leaf
         else:
             root = Tree(-1, [root, leaf])
-    print 'left branching'
-    print root
     return root
 
 def tag_leaves(t):

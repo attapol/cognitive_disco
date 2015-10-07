@@ -65,38 +65,50 @@ class LSTM(object):
 
 
 class BinaryTreeLSTM(LSTM):
+    """Tree LSTM 
+
+    This version is slow and a bit expensive on memory as the theano.scan loop
+    passes on all of the time slices with on one time slice changed. 
+    I am not sure if theano is doing something smart with it or not. 
+
+    tlstm.py is unuseable because it takes too long to compose a computation
+    graph in theano. It takes around 12s per discourse relation, which is 
+    far too slow. 
+
+    """
 
     def __init__(self, rng, dim_proj, n_out=None, W=None, U=None, b=None):
         self._init_params(rng, dim_proj, n_out, W, U, b, 5)
         word_matrix = T.tensor3(dtype=config.floatX) 
 
-        word_mask = T.matrix(dtype=config.floatX)
         c_mask = T.matrix(dtype=config.floatX)
+        node_mask = T.matrix(dtype=config.floatX)
         children = T.tensor3(dtype='int64')
 
-        self.input = [word_matrix, children, word_mask, c_mask]
+        self.input = [word_matrix, children, c_mask, node_mask]
         n_samples = word_matrix.shape[1]
 
-        self.h = self.project(word_matrix, children, word_mask, c_mask)
-        self.max_pooled_h = (self.h * c_mask[:, :, None]).max(axis=0) 
-        self.sum_pooled_h = (self.h * c_mask[:, :, None]).sum(axis=0) 
+        self.h, self.c_memory = self.project(word_matrix, children, c_mask)
+        all_samples = T.arange(n_samples)
+
+        self.max_pooled_h = (self.h * node_mask[:, :, None]).max(axis=0) 
+        self.sum_pooled_h = (self.h * node_mask[:, :, None]).sum(axis=0) 
+
         self.mean_pooled_h = self.sum_pooled_h / c_mask.sum(axis=0)[:, None]
-        self.top_h = self.h[2 * word_mask.sum(axis=0).astype('int64') ,
-                T.arange(n_samples), :]
+        num_inner_nodes = c_mask.sum(axis=0).astype('int64')
+        num_nodes = num_inner_nodes * 2 + 1
+        self.top_h = self.h[num_nodes - 1, all_samples, :]
 
     def reset(self, rng):
         self._reset(rng, 5)
 
 
-    def project(self, word_embedding, children, word_mask, c_mask):
+    def project(self, word_embedding, children, c_mask):
         """
 
         word_embedding - TxNxd serrated tensor prefilled with word embeddings 
-        children - TxNx2 serrated matrix for children list 
-
-        word_mask - TxN mask for varying leaves list
+        children - TxNx3 serrated matrix for children list 
         c_mask - TxN mask for varying children list
-
         """
         nsteps = children.shape[0]
         if word_embedding.ndim == 3:
@@ -104,9 +116,10 @@ class BinaryTreeLSTM(LSTM):
         else:
             n_samples = 1
 
-        def _step(step_idx, w, c, x_m, c_m, hidden, c_matrix):
-            left_child_idx = c[:, 0]
-            right_child_idx = c[:, 1]
+        def _step(c, c_m, hidden, c_matrix):
+            node_idx = c[:, 0]
+            left_child_idx = c[:, 1]
+            right_child_idx = c[:, 2]
 
             all_samples = T.arange(n_samples)
             recursive = \
@@ -123,24 +136,22 @@ class BinaryTreeLSTM(LSTM):
             new_c = i * c_prime + \
                     f1 * c_matrix[left_child_idx, all_samples,: ] +\
                     f2 * c_matrix[right_child_idx, all_samples,: ]
-            new_c_masked = x_m[:, None] * 0 + c_m[:,None] * new_c + \
-                    (1. - x_m[:, None] - c_m[:, None]) * c_matrix[step_idx - 1]
+
+            new_c_masked = c_m[:,None] * new_c + \
+                    (1. - c_m[:, None]) * c_matrix[node_idx, all_samples, :]
 
             new_h = o * T.tanh(new_c_masked)
-            new_h_masked = x_m[:, None] * w + c_m[:, None] * new_h + \
-                    (1. - x_m[:, None] - c_m[:, None]) * hidden[step_idx - 1]
+            new_h_masked = c_m[:, None] * new_h + \
+                    (1. - c_m[:, None]) * hidden[node_idx, all_samples, :]
 
-            return T.set_subtensor(hidden[step_idx], new_h_masked), \
-                    T.set_subtensor(c_matrix[step_idx], new_c_masked)
+            return T.set_subtensor(hidden[node_idx, all_samples], new_h_masked), \
+                    T.set_subtensor(c_matrix[node_idx, all_samples], new_c_masked)
 
-        rval, updates = theano.scan(_step, 
-                sequences=[T.arange(nsteps), word_embedding, children, 
-                    word_mask, c_mask],
-                outputs_info=[
-                    T.alloc(np_floatX(0.), nsteps, n_samples, self.dim_proj),
-                    T.alloc(np_floatX(0.), nsteps, n_samples, self.dim_proj),],
+        rval, updates = theano.scan(_step, sequences=[children, c_mask],
+                outputs_info=[word_embedding,
+                    T.zeros(word_embedding.shape),],
                 n_steps=nsteps)
-        return rval[0][-1]
+        return rval[0][-1], rval[1][-1]
 
     @staticmethod
     def make_givens(givens, input_vec, T_training_data, start_idx, end_idx):
@@ -251,36 +262,42 @@ def prep_srm_arg(relation_list, arg_pos, wbm, max_length, ignore_OOV=True):
     return embedding_series, x_mask
 
 
-def prep_tree_srm_arg(relation_list, arg_pos, wbm, max_length):
+def prep_tree_srm_arg(relation_list, arg_pos, wbm, max_length, 
+        all_left_branching=False):
     assert arg_pos == 1 or arg_pos == 2
     n_samples = len(relation_list)
-    w_indices = np.zeros((max_length, n_samples)).astype('int64')
-    w_mask = np.zeros((max_length, n_samples)).astype(config.floatX)
+    w_indices = np.zeros((2 * max_length, n_samples)).astype('int64')
     c_mask = np.zeros((max_length, n_samples), dtype=config.floatX)
+    node_mask = np.zeros((2 * max_length, n_samples), dtype=config.floatX)
     #children = np.zeros((max_length, n_samples, 2), dtype='int64')
-    children = np.zeros((n_samples, max_length, 2), dtype='int64')
+    children = np.zeros((n_samples, max_length, 3), dtype='int64')
     for i, relation in enumerate(relation_list):
-        parse_tree = tree_util.find_parse_tree(relation, arg_pos)
-        if len(parse_tree.leaves()) == 0:
+        if all_left_branching:
             parse_tree = tree_util.left_branching_tree(relation, arg_pos)
+        else:
+            parse_tree = tree_util.find_parse_tree(relation, arg_pos)
+            if len(parse_tree.leaves()) == 0:
+                parse_tree = tree_util.left_branching_tree(relation, arg_pos)
         indices = wbm.index_tokens(parse_tree.leaves(), ignore_OOV=False)
 
         sequence_length = min(max_length, len(indices))
         w_indices[:sequence_length, i] = indices[:sequence_length]
-        w_mask[:sequence_length, i] = 1.
 
         ordering_matrix, num_leaves = tree_util.reverse_toposort(parse_tree)
-        num_nodes = min(max_length, ordering_matrix.shape[0])
+        num_nodes = min(2 * max_length, ordering_matrix.shape[0])
         print num_leaves, num_nodes
-        assert(num_nodes >= num_leaves or num_leaves >= max_length)
-        c_mask[num_leaves:num_nodes, i] = 1.
-        children[i, :num_nodes, :] = ordering_matrix[:num_nodes, 1:]
+        #assert(num_nodes >= num_leaves)
+        if num_nodes > num_leaves:
+            num_inner_nodes = num_nodes - num_leaves
+            children[i, :num_inner_nodes, :] = ordering_matrix[num_leaves:num_nodes, :]
+            c_mask[:num_inner_nodes, i] = 1.
+            node_mask[num_leaves:num_nodes, i] = 1.
     children = np.swapaxes(children, 0, 1)
     embedding_series = \
         wbm.wm[w_indices.flatten()].\
-            reshape([max_length, n_samples, wbm.num_units]).\
+            reshape([max_length * 2, n_samples, wbm.num_units]).\
             astype(config.floatX)
-    return embedding_series, children, w_mask, c_mask
+    return embedding_series, children, c_mask, node_mask
 
 def prep_serrated_matrix_relations(relation_list, wbm, max_length):
     arg1_srm, arg1_mask = prep_srm_arg(relation_list, 1, wbm, max_length)
@@ -297,16 +314,12 @@ def _check_masks(word_mask, c_mask):
     assert(np.all(0 <= check_sum) and np.all(check_sum <= 1))
 
 def prep_tree_lstm_serrated_matrix_relations(relation_list, wbm, max_length):
-    arg1_srm, arg1_mask = prep_srm_arg(relation_list, 1, wbm, max_length, False)
-    arg2_srm, arg2_mask = prep_srm_arg(relation_list, 2, wbm, max_length, False)
-    arg1_srm, arg1_children, arg1_mask, arg1_c_mask = \
+    arg1_srm, arg1_children, arg1_c_mask, arg1_node_mask = \
             prep_tree_srm_arg(relation_list, 1, wbm, max_length)
-    arg2_srm, arg2_children, arg2_mask, arg2_c_mask = \
+    arg2_srm, arg2_children, arg2_c_mask, arg2_node_mask = \
             prep_tree_srm_arg(relation_list, 2, wbm, max_length)
-    _check_masks(arg1_mask, arg1_c_mask)
-    _check_masks(arg2_mask, arg2_c_mask)
-    return (arg1_srm, arg1_children, arg1_mask, arg1_c_mask,\
-            arg2_srm, arg2_children, arg2_mask, arg2_c_mask)
+    return (arg1_srm, arg1_children, arg1_c_mask, arg1_node_mask, \
+            arg2_srm, arg2_children, arg2_c_mask, arg2_node_mask)
 
 
 def np_floatX(data):
