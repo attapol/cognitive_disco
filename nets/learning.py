@@ -103,6 +103,7 @@ class Trainer(object):
 
 		n_train_batches = self.num_training_data / minibatch_size
 		validation_frequency = min(n_train_batches / 4, patience / 2)
+		validation_frequency = 100
 	
 		best_validation_loss = np.inf
 		test_score = 0 
