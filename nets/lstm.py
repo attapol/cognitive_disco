@@ -285,7 +285,7 @@ def prep_tree_srm_arg(relation_list, arg_pos, wbm, max_length,
 
         ordering_matrix, num_leaves = tree_util.reverse_toposort(parse_tree)
         num_nodes = min(2 * max_length, ordering_matrix.shape[0])
-        print num_leaves, num_nodes
+        #print num_leaves, num_nodes
         #assert(num_nodes >= num_leaves)
         if num_nodes > num_leaves:
             num_inner_nodes = num_nodes - num_leaves
