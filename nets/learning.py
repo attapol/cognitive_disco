@@ -26,6 +26,14 @@ class DataTriplet(object):
 
     def _check_num_rows(self, data_list):
         num_rows = [x.shape[0] for x in data_list]
+        num_rows = []
+        for x in data_list:
+            if len(x.shape) == 3:
+                num_rows.append(x.shape[1])
+            elif len(x.shape) == 1 or len(x.shape) == 2:
+                num_rows.append(x.shape[0])
+            else:
+                num_rows.append(None)
         assert(all(x == num_rows[0] for x in num_rows))
 
     def assert_data_same_length(self):
@@ -111,11 +119,16 @@ class Trainer(object):
         while (epoch < n_epochs) and (not done_looping):
             epoch = epoch + 1
             for minibatch_index in xrange(n_train_batches):
+
                 iteration = (epoch - 1) * n_train_batches  + minibatch_index
                 start_time = timeit.default_timer()
-                #misc = self.misc_function(minibatch_index, minibatch_size)
-                #print misc
 
+                """
+                if self.misc_function is not None:
+                    misc = self.misc_function(minibatch_index, minibatch_size)
+                    for x in misc:
+                        print x
+                """
                 c = self.train_function(minibatch_index, minibatch_size)
                 if np.isnan(c):
                     print 'NaN found at batch %s after seeing %s samples' % \
@@ -139,6 +152,7 @@ class Trainer(object):
                     test_accuracy, c = self.eval_function_test(*test_data)
                     print 'TEST: iteration %s : accuracy = %s ; cost =%s' % \
                             (iteration, test_accuracy, c)
+
                     if dev_accuracy > best_dev_acc:
                         if dev_accuracy * improvement_threshold > best_dev_acc:
                             patience = max(patience, 
@@ -156,7 +170,7 @@ class Trainer(object):
 class AdagradTrainer(Trainer):
 
     def __init__(self, model, cost_function, learning_rate, lr_smoother, 
-            data_triplet, make_givens_fn=None):
+            data_triplet, make_givens_fn=None, misc_function=None):
         self.model = model
         self.cost_function = cost_function 
         self.learning_rate = learning_rate
@@ -164,12 +178,9 @@ class AdagradTrainer(Trainer):
         self.data_triplet = data_triplet
 
         print 'Taking gradient...'
-        #self.gparams = [T.grad(cost=cost_function, wrt=x) 
-                #for x in self.model.params]
         self.gparams = T.grad(cost_function, self.model.params)
 
-        #self.gparams = [\
-        #        T.maximum(-5, T.minimum(5, T.grad(cost=cost_function, wrt=x))) 
+        self.gparams = [T.maximum(-5, T.minimum(5, x)) for x in self.gparams]
         #        for x in self.model.params]
         self.sum_gradient_squareds = [
                 theano.shared(value=np.zeros(param.get_value().shape).\
@@ -200,20 +211,20 @@ class AdagradTrainer(Trainer):
                 for x in data_triplet.training_data]
         T_training_data_label = [theano.shared(x, borrow=True) 
                 for x in data_triplet.training_data_label]
-        self.num_training_data = len(data_triplet.training_data_label[0])
+        self.num_training_data = len(data_triplet.training_data_label[-1])
 
         givens = {}
         start_idx = index * minibatch_size
         end_idx = (index + 1) * minibatch_size
         if make_givens_fn is not None:
-            make_givens_fn(givens, self.model.input, 
-                    T_training_data, start_idx, end_idx)
+            make_givens_fn(givens, self.model.input, T_training_data, 
+                    self.model.output, T_training_data_label, 
+                    start_idx, end_idx)
         else:
             for i, input_var in enumerate(self.model.input):
                 givens[input_var] = T_training_data[i][start_idx:end_idx]
-
-        for i, output_var in enumerate(self.model.output):
-            givens[output_var] = T_training_data_label[i][start_idx:end_idx]
+            for i, output_var in enumerate(self.model.output):
+                givens[output_var] = T_training_data_label[i][start_idx:end_idx]
 
         print 'Compiling training function...'
         self.train_function = theano.function(
@@ -232,14 +243,19 @@ class AdagradTrainer(Trainer):
         self.eval_function_test = self.eval_function_dev
         print 'Adagrad finished compiling...'
 
-        #self.misc_function = theano.function(
-                #inputs=[index, minibatch_size],
-                #outputs=self.model.layers[2].input[0],
-                #givens=givens)
+        if misc_function is not None:
+            self.misc_function = theano.function(
+                    inputs=[index, minibatch_size],
+                    outputs=misc_function,
+                    givens=givens, 
+                    on_unused_input='warn')
+        else:
+            self.misc_function = None
 
     def reset(self):
         for sgs in self.sum_gradient_squareds:
-            sgs.set_value(np.zeros(sgs.get_value().shape, dtype=theano.config.floatX))
+            value = np.zeros(sgs.get_value().shape, dtype=theano.config.floatX)
+            sgs.set_value(value)
 
 
 class SGDTrainer(Trainer):
