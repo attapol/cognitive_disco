@@ -10,7 +10,7 @@ from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
         LinearLayer, NeuralNet
-from experiments import _get_wbm, set_logger
+import cognitive_disco.nets.util as util
 
 def net_experiment_tlstm(dir_list, args):
     """Tree-structured LSTM experiment version 2
@@ -45,18 +45,18 @@ def net_experiment_tlstm(dir_list, args):
         name_file = '%s_%s_%sunits_%sh_%s_left' % \
                 (experiment_name, args[0], num_units, 
                     num_hidden_layers, proj_type)
-        json_file = set_logger(name_file)
+        json_file = util.set_logger(name_file)
         model_file = name_file + '.model'
     else:
         name_file = '%s_%s_%sunits_%sh_%s' % \
                 (experiment_name, args[0], num_units, 
                     num_hidden_layers, proj_type)
-        json_file = set_logger(name_file)
+        json_file = util.set_logger(name_file)
         model_file = name_file + '.model'
     sense_lf = l.SecondLevelLabel()
     relation_list_list = [extract_implicit_relations(dir, sense_lf)[0:5]
             for dir in dir_list]
-    wbm = _get_wbm(num_units)
+    wbm = util.get_wbm(num_units)
 
     data_list = []
     for relation_list in relation_list_list:

@@ -5,6 +5,7 @@ import timeit
 import numpy as np
 import theano.tensor as T
 
+import cognitive_disco.base_label_functions as l
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
@@ -12,7 +13,6 @@ from cognitive_disco.nets.bilinear_layer import \
 from cognitive_disco.nets.lstm import \
         SerialLSTM, prep_serrated_matrix_relations, \
         BinaryTreeLSTM, prep_tree_lstm_serrated_matrix_relations
-from experiments import _get_wbm, set_logger
 import cognitive_disco.nets.util as util
 
 def net_experiment_lstm(dir_list, args):
@@ -44,14 +44,14 @@ def net_experiment_lstm(dir_list, args):
         raise ValueError('Last argument must be shared or noshared')
 
     experiment_name = sys._getframe().f_code.co_name    
-    json_file = set_logger('%s_%s_%sunits_%sh_%s_%s' % \
+    json_file = util.set_logger('%s_%s_%sunits_%sh_%s_%s' % \
             (experiment_name, args[0], num_units, 
                 num_hidden_layers, proj_type, args[4]))
     sense_lf = l.SecondLevelLabel()
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
 
-    wbm = _get_wbm(num_units)
+    wbm = util.get_wbm(num_units)
     data_list = []
     for relation_list in relation_list_list:
         data = prep_serrated_matrix_relations(relation_list, wbm, 30)
@@ -65,7 +65,8 @@ def net_experiment_lstm(dir_list, args):
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
             else [20, 50, 200, 300, 400] 
     for num_hidden_units in num_hidden_unit_list:
-        _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+        _net_experiment_lstm_helper(experiment_name,
+                json_file, data_triplet, wbm, num_reps, 
                 SerialLSTM,
                 num_hidden_layers=num_hidden_layers, 
                 num_hidden_units=num_hidden_units, 
@@ -109,18 +110,18 @@ def net_experiment_tree_lstm(dir_list, args):
 
     experiment_name = sys._getframe().f_code.co_name    
     if all_left_branching:
-        json_file = set_logger('%s_%s_%sunits_%sh_%s_%s_left' % \
+        json_file = util.set_logger('%s_%s_%sunits_%sh_%s_%s_left' % \
                 (experiment_name, args[0], num_units, 
                     num_hidden_layers, proj_type, args[4]))
     else:
-        json_file = set_logger('%s_%s_%sunits_%sh_%s_%s' % \
+        json_file = util.set_logger('%s_%s_%sunits_%sh_%s_%s' % \
                 (experiment_name, args[0], num_units, 
                     num_hidden_layers, proj_type, args[4]))
     sense_lf = l.SecondLevelLabel()
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
 
-    wbm = _get_wbm(num_units)
+    wbm = util.get_wbm(num_units)
     data_list = []
     for relation_list in relation_list_list:
         data = prep_tree_lstm_serrated_matrix_relations(
@@ -136,7 +137,8 @@ def net_experiment_tree_lstm(dir_list, args):
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
             else [50, 200, 300, 400] 
     for num_hidden_units in num_hidden_unit_list:
-        _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+        _net_experiment_lstm_helper(experiment_name,
+                json_file, data_triplet, wbm, num_reps, 
                 BinaryTreeLSTM,
                 num_hidden_layers=num_hidden_layers, 
                 num_hidden_units=num_hidden_units, 
@@ -146,7 +148,8 @@ def net_experiment_tree_lstm(dir_list, args):
                 arg_shared_weights=arg_shared_weights
                 )
 
-def _net_experiment_lstm_helper(json_file, data_triplet, wbm, num_reps, 
+def _net_experiment_lstm_helper(experiment_name,
+        json_file, data_triplet, wbm, num_reps, 
         LSTMModel, num_hidden_layers, num_hidden_units, use_hinge, proj_type, 
         use_bl, arg_shared_weights):
 

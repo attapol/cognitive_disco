@@ -1,20 +1,25 @@
 import numpy as np
 from nltk import Tree
 
-
 def reverse_toposort(tree):
     """Reverse topological sorting
 
     Always go from the leaves first and then build up
     from the bottom up.
+
+    Returns:
+        ordering_matrix : each row is a (node index, left child index, right child index)
+        node_label_list : a list containing syntactic categories. None for POS.
+        num_leaves : the number of leaves in the tree
     """
     btree = binarize_tree(tree)
     num_leaves = tag_leaves(btree)
     ordering_list = [(i, 0, 0) for i in range(num_leaves)]
-    num_nodes = recurs_reverse_toposort(btree, num_leaves, ordering_list)
+    node_label_list = [None for i in range(num_leaves)]
+    num_nodes = recurs_reverse_toposort(btree, num_leaves, 
+            ordering_list, node_label_list)
     assert(num_nodes == (2 * num_leaves - 1))
-    return np.array(ordering_list, dtype='int64'), num_leaves
-
+    return np.array(ordering_list, dtype='int64'), node_label_list, num_leaves
 
 def find_parse_tree(relation, arg_pos):
     assert arg_pos == 1 or arg_pos == 2
@@ -63,7 +68,7 @@ def tag_leaves(t):
     return recurs_tag_leaves(t, 0)
 
 
-def recurs_reverse_toposort(t, num_nodes, ordering_list):
+def recurs_reverse_toposort(t, num_nodes, ordering_list, node_label_list):
     if not isinstance(t, Tree):
         # ordering_list.append((t, 0, 0))
         return num_nodes
@@ -71,11 +76,13 @@ def recurs_reverse_toposort(t, num_nodes, ordering_list):
     assert(len(t) == 2)
     child_indices = []
     for child in t:
-        num_nodes = recurs_reverse_toposort(child, num_nodes, ordering_list)
+        num_nodes = recurs_reverse_toposort(child, num_nodes, 
+                ordering_list, node_label_list)
         if isinstance(child, Tree):
             child_indices.append(child.node)
         else:
             child_indices.append(child)
+    node_label_list.append(t.node)
     t.node = num_nodes
     num_nodes += 1
     ordering_list.append((t.node, child_indices[0], child_indices[1]))
@@ -97,11 +104,18 @@ def binarize_tree(t):
             new_children = []
             for i, child in enumerate(t):
                 new_children.append(recurs_binarize_tree(child))
-            return Tree(-1, new_children)
+            return Tree(t.node, new_children)
+            #return Tree(-1, new_children)
         else:
-            left_child = recurs_binarize_tree(Tree(-1, t[0:-1]))
+            #left_child = recurs_binarize_tree(Tree(-1, t[0:-1]))
+            if t.node[-1] != '_':
+                new_node_name = t.node + '_'
+            else:
+                new_node_name = t.node
+            left_child = recurs_binarize_tree(Tree(new_node_name, t[0:-1]))
             right_child = recurs_binarize_tree(t[-1])
-            return Tree(-1, [left_child, right_child])
+            #return Tree(-1, [left_child, right_child])
+            return Tree(t.node, [left_child, right_child])
     return recurs_binarize_tree(t)
 
 

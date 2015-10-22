@@ -195,6 +195,57 @@ class LinearLayer(object):
             activation_fn=self.activation_fn)
         return l
 
+class LinearLayerTensorOutput(object):
+    """Linear Layer that supports tensor-shaped output
+
+    It turns out that I could have just modified the LinearLayer
+    to compute crossentropy based on the boolean mask matrix. 
+    But I will roll with this gratuitous class for now. 
+    """
+
+    def __init__(self, rng, n_in, n_out, X, W=None, b=None):
+        self.n_in = n_in
+        self.n_out = n_out
+        self.rng = rng
+        if W is None:
+            W_values = np.asarray(rng.uniform(
+                    low=-np.sqrt(6. / (n_in + n_out)),
+                    high=np.sqrt(6. / (n_in + n_out)),
+                    size=(n_in, n_out)), 
+                    dtype=theano.config.floatX)
+            W = theano.shared(value=W_values, borrow=True)
+        if b is None:
+            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
+            b = theano.shared(value=b_values, borrow=True)
+        self.input = [X]
+        self.W = W
+        self.b = b
+        self.params = [self.W, self.b]
+
+        net = X.dot(self.W) + self.b
+        net_max = T.max(net, 2)
+        denom = T.log(T.sum(T.exp(net - net_max[:,:,None]), 2)) - net_max 
+        log_prob = net - denom[:,:,None]
+
+        Y = T.tensor3()
+        self.output = [Y]
+        num_nodes = T.sum(Y)
+        self.crossentropy = -(log_prob * Y).sum() / num_nodes
+        correct = (Y * T.eq(net, net_max[:,:,None])).sum()
+        self.miscs = [correct / num_nodes, self.crossentropy]
+        #node_mask = Y.sum(2).nonzero()
+        #self.miscs = [T.argmax(Y,2)[node_mask][0:20], T.argmax(net, 2)[node_mask][0:20]]
+
+    def reset(self, rng):
+        n_in, n_out = self.W.get_value().shape
+        W_values = np.asarray(rng.uniform(
+            low=-np.sqrt(6. / (n_in + n_out)),
+            high=np.sqrt(6. / (n_in + n_out)),
+            size=(n_in, n_out)),
+            dtype=theano.config.floatX)
+        self.W.set_value(W_values)
+        b_values = np.zeros((n_out,), dtype=theano.config.floatX)
+        self.b.set_value(b_values)
 
 class BilinearLayer(object):
     """Bilinear layer with dense vectors
@@ -244,7 +295,8 @@ class BilinearLayer(object):
                     lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
                     sequences=[self.activation, Y])
             self.hinge_loss = hinge_loss_instance.sum()
-            self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
+            self.crossentropy = \
+                    -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
     def reset(self, rng):
         W_values = np.asarray(

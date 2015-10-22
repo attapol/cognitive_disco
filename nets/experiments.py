@@ -6,6 +6,7 @@ import numpy as np
 import theano.sparse
 import theano.tensor as T
 
+from stlstm_experiments import net_experiment_stlstm
 from tlstm_experiments import net_experiment_tlstm
 from lstm_experiments import net_experiment_lstm, net_experiment_tree_lstm
 
@@ -19,7 +20,6 @@ import cognitive_disco.nets.util as util
 import cognitive_disco.dense_feature_functions as df
 import cognitive_disco.feature_functions as f
 import cognitive_disco.base_label_functions as l
-from tpl.language.lexical_structure import WordEmbeddingMatrix
 
 
 def net_experiment0_0(dir_list, args):
@@ -112,10 +112,6 @@ def net_experiment0_3(dir_list, args):
 # Investigate the efficacy of bilinearity and feature abstraction through hidden layers
 #
 
-def set_logger(file_name):
-    sys.stdout = open('%s.log' % file_name, 'w', 1)
-    json_file = open('%s.json' % file_name, 'w', 1)
-    return json_file
 
 def _net_experiment1_sparse_helper(dir_list, experiment_name, ff_list, use_hinge_loss=False):
     json_file = set_logger(experiment_name)
@@ -1038,22 +1034,6 @@ def net_experiment3_cdssm(dir_list, args):
     _net_experiment3_helper(experiment_name, json_file, num_reps, data_triplet, 
             use_linear=True, use_bilinear=False, use_hinge=False)
 
-def _get_wbm(num_units):
-    if num_units == 50:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.npy'
-        vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50_vocab.txt'
-    elif num_units == 100:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100.npy'
-        vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100_vocab.txt'
-    elif num_units == 300:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300.npy'
-        vocab_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300_vocab.txt'
-    else:
-        # this will crash the next step and te's too lazy to make it throw an exception.
-        dict_file = None
-        vocab_file = None
-    wbm = WordEmbeddingMatrix(dict_file, vocab_file)
-    return wbm
 
 # net_experiment4 series
 # Investigate the effectiveness of hidden layer in abstracting features
@@ -1203,7 +1183,9 @@ def net_experiment5_1(dir_list, args):
 
 if __name__ == '__main__':
     experiment_name = sys.argv[1]
-    dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
-    #dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
-    globals()[experiment_name](dir_list, sys.argv[2:])
-    
+    mode = sys.argv[2]
+    if mode == 'run':
+        dir_list = ['conll15-st-05-19-15-train', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+    elif mode == 'dry':
+        dir_list = ['conll15-st-05-19-15-dev', 'conll15-st-05-19-15-dev', 'conll15-st-05-19-15-test']
+    globals()[experiment_name](dir_list, sys.argv[3:])
