@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.json.JSONException;
 
 import types.DataTriplet;
+import types.DimensionMapper;
 import types.LabelType;
 import types.SimpleConfusionMatrix;
 import cc.mallet.classify.Classifier;
@@ -21,32 +22,37 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 	public BaselineMaxEntModel(String experimentName, String trainingDir, String devDir, String testDir)
 			throws JSONException, IOException {
 		data = null;
+		dm = new DimensionMapper();
 		originalData = loadOriginalData(experimentName, trainingDir, devDir, testDir);
 	}
 
 	@Override
 	public void trainTest() throws FileNotFoundException {
-		// TODO Auto-generated method stub
+		for (LabelType labelType : LabelType.values()){
+			trainTest(labelType);
+		}
+	}
+	
+	public SimpleConfusionMatrix[] trainTest(LabelType labelType) throws FileNotFoundException {
 		ClassifierTrainer<?> trainer = new MaxEntTrainer();
 		SimpleConfusionMatrix cm;
 		Trial baselineResult;
-		for (LabelType labelType : LabelType.values()){
-			trainer = new MaxEntTrainer();
-			// Evaluate on the combined dimension and mapped to the original label
-			originalData.importData(labelType);
-			trainer.train(this.originalData.getTrainingSet());
-			classifier = trainer.getClassifier();
+		trainer = new MaxEntTrainer();
+		// Evaluate on the combined dimension and mapped to the original label
+		originalData.importData(labelType);
+		trainer.train(this.originalData.getTrainingSet());
+		classifier = trainer.getClassifier();
 
-			System.out.println("====== Baseline classifier performance ("+ labelType +") ======");
-			baselineResult = new Trial(classifier, this.originalData.getTestSet());
-			cm = new SimpleConfusionMatrix(baselineResult);
-			System.out.println(cm.toString());
+		System.out.println("====== Baseline classifier performance ("+ labelType +") ======");
+		baselineResult = new Trial(classifier, this.originalData.getTestSet());
+		SimpleConfusionMatrix testCm = new SimpleConfusionMatrix(baselineResult);
+		System.out.println(testCm.toString());
 
-			baselineResult = new Trial(classifier, this.originalData.getDevSet());
-			cm = new SimpleConfusionMatrix(baselineResult);
-			System.out.println(cm.toString());
-		}
+		baselineResult = new Trial(classifier, this.originalData.getDevSet());
+		SimpleConfusionMatrix devCm = new SimpleConfusionMatrix(baselineResult);
+		System.out.println(devCm.toString());
 		
+		return new SimpleConfusionMatrix[]{devCm, testCm};
 	}
 
 	// TODO: Does not support all three label types yet

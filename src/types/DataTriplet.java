@@ -14,6 +14,7 @@ import cc.mallet.pipe.SerialPipes;
 import cc.mallet.pipe.Target2Label;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.Alphabet;
+import cc.mallet.types.FeatureSelection;
 import cc.mallet.types.InstanceList;
 
 /*
@@ -199,4 +200,9 @@ public class DataTriplet {
 		this.testFileName = testFileName;
 	}
 
+	public void setFeatureSelection(FeatureSelection fs) {
+		this.trainingSet.setFeatureSelection(fs);
+		this.devSet.setFeatureSelection(fs);
+		this.testSet.setFeatureSelection(fs);
+	}
 }

@@ -15,8 +15,8 @@ import types.SimpleConfusionMatrix;
 public abstract class CognitiveDiscourseParserBase {
 
 	protected DimensionMapper dm;
-	protected DataTriplet[] data;
-	protected DataTriplet originalData;
+	public DataTriplet[] data;
+	public DataTriplet originalData;
 	public ResultWriter writer;
 	
 
