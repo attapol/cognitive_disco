@@ -35,7 +35,7 @@ public abstract class BaseModel {
 		ClassifierTrainer<?> trainer = getTrainer();
 
 		trainer.train(data.getTrainingSet());
-		Classifier classifier = trainer.getClassifier();
+		classifier = trainer.getClassifier();
 		//PrintWriter pw = new PrintWriter(System.out);
 		//classifier.print(pw);
 		//classifier.printRank(pw);
@@ -53,6 +53,10 @@ public abstract class BaseModel {
 	
 	public void trainTest() throws FileNotFoundException{
 		trainTest(true);
+	}
+	
+	public Classifier getClassifier() {
+		return classifier;
 	}
 
 }

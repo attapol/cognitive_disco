@@ -1,9 +1,11 @@
 package models;
 
 import types.Util;
+
 import java.io.FileNotFoundException;
 
 import cc.mallet.classify.ClassifierTrainer;
+import cc.mallet.classify.MaxEnt;
 import cc.mallet.classify.MaxEntTrainer;
 
 
@@ -21,6 +23,11 @@ public class MaxEntModel extends BaseModel{
 		return m;
 	}
 	
+	
+	public double[] getParameters() {
+		MaxEnt maxent = (MaxEnt) classifier;
+		return maxent.getParameters();
+	}
 
 	public static void main(String[] args) throws FileNotFoundException {
 		MaxEntModel maxEnt;

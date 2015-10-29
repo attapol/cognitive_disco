@@ -23,8 +23,8 @@ public class InfoGainFeatureSelectionExp {
 		model.data.importData(LabelType.SCHEME_B);
 		RankedFeatureVector infoGain = new InfoGain(model.data.getTrainingSet());
 		ResultWriter rw = new ResultWriter(resultName);
-		int[] numFeatureList = new int[]{1000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 40000, 50000, 100000}; 
-		//int[] numFeatureList = new int[]{1000, 2000, 100000, 200000};
+		//int[] numFeatureList = new int[]{1000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 40000, 50000, 100000}; 
+		int[] numFeatureList = new int[]{100000, 150000, 200000, 250000, 300000, 350000, 400000, 450000, 500000, 550000};
 		double bestTestAccuracy = 0.0;
 		double bestDevAccuracy = 0.0;
 		int bestNumFeatures = 0;
