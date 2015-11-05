@@ -296,7 +296,7 @@ def prep_tree_srm_arg(relation_list, arg_pos, wbm, max_length,
     c_mask = np.zeros((max_length, n_samples), dtype=config.floatX)
     node_mask = np.zeros((2 * max_length, n_samples), dtype=config.floatX)
     children = np.zeros((n_samples, max_length, 3), dtype='int64')
-    node_label_tensor = np.zeros((2 * max_length, n_samples, len(node_label_alphabet)))
+    node_label_tensor = np.zeros((2 * max_length, n_samples, len(node_label_alphabet)), dtype=config.floatX)
     for i, relation in enumerate(relation_list):
         if all_left_branching:
             parse_tree = tree_util.left_branching_tree(relation, arg_pos)
