@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import pipes.Target2CoNLLLabel;
 import pipes.Target2SchemeBLabel;
 import pipes.Target2TopLevelLabel;
+import types.DataTriplet.DataSplitType;
 import cc.mallet.classify.Classification;
 import cc.mallet.pipe.Csv2FeatureVector;
 import cc.mallet.pipe.Pipe;
@@ -31,6 +32,20 @@ public class DataTriplet {
 	private String testFileName;
 	private int numFeatures;
 	
+	public enum DataSplitType {
+		TRAINING ("Training set"),
+		DEV ("Dev set"),
+		TEST ("Test set");
+		
+		private final String name;
+		DataSplitType(String name){
+			this.name = name;
+		}
+		public String toString() {
+			return this.name;
+		}
+	}
+	
 	public DataTriplet(String trainingFileName, String devFileName, String testFileName) {
 		this.setTrainingFileName(trainingFileName);
 		this.setDevFileName(devFileName);
@@ -40,20 +55,26 @@ public class DataTriplet {
 	/*
 	 * importData has to be called first. The label scheme has to be explicitly selected.
 	 */
+	public InstanceList getData(DataSplitType dType) throws FileNotFoundException {
+		switch (dType) {
+		case TRAINING:
+			return getTrainingSet();
+		case DEV:
+			return getDevSet();
+		case TEST:
+			return getTestSet();
+		}
+		return null;
+	}
+	
 	public InstanceList getTrainingSet() throws FileNotFoundException { 
 		return trainingSet; 
 	}
 
-	/*
-	 * importData has to be called first. The label scheme has to be explicitly selected.
-	 */
 	public InstanceList getDevSet() throws FileNotFoundException { 
 		return devSet; 
 	}
 
-	/*
-	 * importData has to be called first. The label scheme has to be explicitly selected.
-	 */
 	public InstanceList getTestSet() throws FileNotFoundException { 
 		return testSet; 
 	}
@@ -204,5 +225,17 @@ public class DataTriplet {
 		this.trainingSet.setFeatureSelection(fs);
 		this.devSet.setFeatureSelection(fs);
 		this.testSet.setFeatureSelection(fs);
+	}
+
+	public String getDataFileName(DataSplitType dType) {
+		switch (dType) {
+		case TRAINING:
+			return getTrainingFileName();
+		case DEV:
+			return getDevFileName();
+		case TEST:
+			return getTestFileName();
+		}
+		return null;
 	}
 }

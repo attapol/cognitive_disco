@@ -20,25 +20,35 @@ import cc.mallet.types.RankedFeatureVector;
 
 public class InfoGainSelectFeatures {
 
+	public MaxEntModel model; 
+	private String experimentName;
+	private int numFeatures;
+	public FeatureSelection featureSelection;
+
 	public InfoGainSelectFeatures(String experimentName, int numFeatures) throws FileNotFoundException {
 		// TODO Auto-generated constructor stub
-		MaxEntModel model = new MaxEntModel(experimentName);
+		model = new MaxEntModel(experimentName);
+		this.experimentName = experimentName;
+		this.numFeatures = numFeatures;
+
 		model.data.importData(LabelType.SCHEME_B);
 		RankedFeatureVector infoGain = new InfoGain(model.data.getTrainingSet());
-		FeatureSelection fs = new FeatureSelection(infoGain, numFeatures);
-		model.data.setFeatureSelection(fs);
-		model.trainTest(false);
-		
+		featureSelection = new FeatureSelection(infoGain, numFeatures);
+		model.data.setFeatureSelection(featureSelection);
+	//	model.trainTest(false);
+	}
+	
+	public void writeFeatures() throws FileNotFoundException {
 		HashMap<Integer, Integer> oldToNewMapping = new HashMap<Integer, Integer>();
 		String newFileName = getFileName(model.data.getTrainingFileName(), experimentName, numFeatures);
 		String modelFileName = newFileName+".model";
-		createSparseMatrix(model.data.getTrainingSet(), fs, newFileName, oldToNewMapping);
+		createSparseMatrix(model.data.getTrainingSet(), featureSelection, newFileName, oldToNewMapping);
 
 		newFileName = getFileName(model.data.getDevFileName(), experimentName, numFeatures);
-		createSparseMatrix(model.data.getDevSet(), fs, newFileName, oldToNewMapping);
+		createSparseMatrix(model.data.getDevSet(), featureSelection, newFileName, oldToNewMapping);
 
 		newFileName = getFileName(model.data.getTestFileName(), experimentName, numFeatures);
-		createSparseMatrix(model.data.getTestSet(), fs, newFileName, oldToNewMapping);
+		createSparseMatrix(model.data.getTestSet(), featureSelection, newFileName, oldToNewMapping);
 		assert(oldToNewMapping.size() == numFeatures);
 	
 		writeModelParameters(modelFileName, model, oldToNewMapping);
@@ -102,6 +112,8 @@ public class InfoGainSelectFeatures {
 		writer.close();
 	}
 	
+
+	
 	public void createSparseMatrix(InstanceList data, FeatureSelection fs, 
 			String fileName, HashMap<Integer, Integer> oldToNewMapping) throws FileNotFoundException{
 		BitSet bs = fs.getBitSet(); 
@@ -126,7 +138,8 @@ public class InfoGainSelectFeatures {
 
 	public static void main(String[] args) throws NumberFormatException, FileNotFoundException {
 		// TODO Auto-generated method stub
-		new InfoGainSelectFeatures(args[0], Integer.parseInt(args[1]));
+		InfoGainSelectFeatures ig = new InfoGainSelectFeatures(args[0], Integer.parseInt(args[1]));
+		ig.writeFeatures();
 
 	}
 
