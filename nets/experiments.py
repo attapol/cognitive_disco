@@ -9,6 +9,7 @@ import theano.tensor as T
 from stlstm_experiments import net_experiment_stlstm
 from tlstm_experiments import net_experiment_tlstm
 from lstm_experiments import net_experiment_lstm, net_experiment_tree_lstm
+from mixture_experiments import net_mixture_experiment1
 
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
@@ -1051,7 +1052,7 @@ def net_experiment4_1(dir_list, args):
             (experiment_name, num_units, num_hidden_layers, projection))
 
     relation_list_list = [extract_implicit_relations(dir, sense_lf) for dir in dir_list]
-    word2vec_ff = _get_word2vec_ff(num_units, projection)
+    word2vec_ff = util._get_word2vec_ff(num_units, projection)
     data_list = [word2vec_ff(relation_list) for relation_list in relation_list_list]
     label_vectors, label_alphabet = util.label_vectorize(relation_list_list, sense_lf)
     data_triplet = DataTriplet(data_list, [[x] for x in label_vectors], [label_alphabet])
@@ -1144,27 +1145,6 @@ def _net_experiment4_helper(json_file, num_hidden_layers, num_hidden_units, num_
         json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
 
 
-def _get_word2vec_ff(num_units, projection):
-    if num_units == 50:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.txt'
-    elif num_units == 100:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100.txt'
-    elif num_units == 300:
-        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300.txt'
-    else:
-        raise ValueError('num units must be {50, 100, 300}. Got %s ' % num_units)
-
-    word2vec = df.EmbeddingFeaturizer(dict_file)
-    if projection == 'mean_pool':
-        return word2vec.mean_args
-    elif projection == 'sum_pool':
-        return word2vec.additive_args
-    elif projection == 'max_pool':
-        return word2vec.max_args
-    elif projection == 'top':
-        return word2vec.top_args
-    else:
-        raise ValueError('projection must be one of {mean_pool, top, max_pool, top}. Got %s ' % projection)
 
 # net_experiment5 series
 # Trying to beat the baseline by MOE with neural networks 

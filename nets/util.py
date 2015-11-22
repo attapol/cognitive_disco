@@ -2,6 +2,29 @@ import sys
 import numpy as np
 import scipy as sp
 from tpl.language.lexical_structure import WordEmbeddingMatrix
+import cognitive_disco.dense_feature_functions as df
+
+def _get_word2vec_ff(num_units, projection):
+    if num_units == 50:
+        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram50.txt'
+    elif num_units == 100:
+        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/wsj-skipgram100.txt'
+    elif num_units == 300:
+        dict_file = '/home/j/llc/tet/nlp/lib/lexicon/google_word_vector/GoogleNews-vectors-negative300.txt'
+    else:
+        raise ValueError('num units must be {50, 100, 300}. Got %s ' % num_units)
+
+    word2vec = df.EmbeddingFeaturizer(dict_file)
+    if projection == 'mean_pool':
+        return word2vec.mean_args
+    elif projection == 'sum_pool':
+        return word2vec.additive_args
+    elif projection == 'max_pool':
+        return word2vec.max_args
+    elif projection == 'top':
+        return word2vec.top_args
+    else:
+        raise ValueError('projection must be one of {mean_pool, top, max_pool, top}. Got %s ' % projection)
 
 def _sparse_featurize_relation_list(relation_list, ff_list, alphabet=None):
     if alphabet is None:
@@ -194,7 +217,7 @@ def get_wbm(num_units):
     return wbm
 
 def set_logger(file_name):
-    #sys.stdout = open('%s.log' % file_name, 'w', 1)
+    sys.stdout = open('%s.log' % file_name, 'w', 1)
     json_file = open('%s.json' % file_name, 'w', 1)
     return json_file
 

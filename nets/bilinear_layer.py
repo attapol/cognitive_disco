@@ -10,14 +10,36 @@ import timeit
 from learning import AdagradTrainer
 
 class NeuralNet(object):
+    """A wrapper neural net class to combine multiple layers into one network
 
-    def __init__(self):
+    """
+
+    def __init__(self, layers=None):
         self.params = []#a list of paramter variables
         self.input = [] #a list of input variables
         self.output = []#a list of output variables
         self.predict = [] # a list of prediction functions
         self.hinge_loss = None # a function
         self.crossentropy = None # a function
+        self.layers = [] # a list of layer in the topological order
+        self.rng = None
+        if layers is not None:
+            self.add_layers(layers)
+
+    def add_layers(self, layers):
+        self.rng = layers[0].rng 
+        self.input = layers[0].input
+        self.output = layers[-1].output
+        self.activation = layers[-1].activation
+        self.crossentropy = layers[-1].crossentropy
+        self.hinge_loss = layers[-1].hinge_loss
+        for layer in layers:
+            self.layers.append(layer)
+            self.params.extend(layer.params)
+
+    def reset(self, rng):
+        for layer in self.layers:
+            layer.reset(rng)
 
 class MJMModel(object):
 
@@ -83,12 +105,18 @@ class MixtureOfExperts(object):
         self.W_list = W_list
         self.b = b
         self.params = self.W_list + [self.b]
+        self.expert_list = expert_list
+        self.n_in_list = n_in_list
         for expert in expert_list:
             self.params.extend(expert.params)
 
         net = self.b
         for i in range(len(self.input)):
-            net += T.dot(self.input[i], self.W_list[i]) 
+            if type(self.input[i]) == theano.sparse.basic.SparseVariable:
+                net += theano.sparse.structured_dot(
+                        self.input[i],self.W_list[i])
+            else:
+                net += T.dot(self.input[i], self.W_list[i])
         gating_activation = T.nnet.softmax(net)
 
         self.activation = 0
@@ -103,6 +131,25 @@ class MixtureOfExperts(object):
                 sequences=[self.activation, Y])
         self.hinge_loss = hinge_loss_instance.sum()
         self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
+
+    def reset(self, rng):
+        for W, n_in in zip(self.W_list, self.n_in_list):
+            total_n_in = np.sum(self.n_in_list)
+            n_out = len(self.expert_list)
+            W_values = np.asarray(
+                rng.uniform(
+                    low=-np.sqrt(6. / (total_n_in + n_out)),
+                    high=np.sqrt(6. / (total_n_in + n_out)),
+                    size=(n_in, n_out)
+                ),
+                dtype=theano.config.floatX
+            )
+            W.set_value(W_values)
+        b_values = np.zeros((n_out,), dtype=theano.config.floatX)
+        self.b.set_value(b_values)
+        for expert in self.expert_list:
+            expert.reset(rng)
+
 
 class LinearLayer(object):
     """Linear Layer that supports multiple separate input (sparse) vectors
@@ -163,6 +210,7 @@ class LinearLayer(object):
 
         if Y is None:
             self.output = []
+            self.crossentropy = None
         else:
             self.output = [Y]
             self.predict = [self.activation.argmax(1)]
@@ -227,7 +275,7 @@ class LinearLayerTensorOutput(object):
         denom = T.log(T.sum(T.exp(net - net_max[:,:,None]), 2)) - net_max 
         log_prob = net - denom[:,:,None]
 
-        Y = T.tensor3()
+        Y = T.tensor3(dtype=theano.config.floatX)
         self.output = [Y]
         num_nodes = T.sum(Y)
         self.crossentropy = -(log_prob * Y).sum() / num_nodes

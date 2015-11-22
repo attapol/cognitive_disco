@@ -235,7 +235,6 @@ def _net_experiment_lstm_helper(experiment_name,
         trainer.reset()
         
         minibatch_size = np.random.randint(20, 60)
-        minibatch_size = 1
         n_epochs = 50
 
         start_time = timeit.default_timer()

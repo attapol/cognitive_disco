@@ -165,7 +165,6 @@ class Trainer(object):
                     break
 
         return best_dev_iteration, float(best_dev_acc), float(best_test_acc)
->>>>>>> 8a5ed3964b0c734e63292c7484a7650335641bb2
 
 class AdagradTrainer(Trainer):
 
