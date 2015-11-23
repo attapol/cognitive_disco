@@ -70,6 +70,7 @@ public class JERecipeExp {
 				FeatureVector fv = (FeatureVector)inst.getData();
 				Alphabet alphabet = fv.getAlphabet();
 				int[] features = fv.getIndices();
+				int numFeaturesAdded = 0;
 				for (int fi : features) {
 					boolean selected = bs.get(fi);
 					if (selected) {
@@ -77,8 +78,10 @@ public class JERecipeExp {
 						if (!featureToIndex.containsKey(featureName)) featureToIndex.put(featureName, featureToIndex.size());
 						int newIndex = featureToIndex.get(featureName);
 						writer.write(" "+newIndex);
+						numFeaturesAdded++;
 					}
 				}
+				if (numFeaturesAdded == 0) writer.write(" "+bs.cardinality());
 			}
 			writer.write("\n");
 		}

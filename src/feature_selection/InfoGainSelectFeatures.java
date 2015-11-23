@@ -32,7 +32,7 @@ public class InfoGainSelectFeatures {
 		this.numFeatures = numFeatures;
 
 		model.data.importData(LabelType.SCHEME_B);
-		RankedFeatureVector infoGain = new InfoGain(model.data.getTrainingSet());
+		RankedFeatureVector infoGain = new MInfoGain(model.data.getTrainingSet());
 		featureSelection = new FeatureSelection(infoGain, numFeatures);
 		model.data.setFeatureSelection(featureSelection);
 	//	model.trainTest(false);
