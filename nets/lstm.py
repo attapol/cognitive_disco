@@ -227,8 +227,10 @@ class SerialLSTM(LSTM):
 
         previous_state = T.dot(embedding_series, self.W) + self.b
 
-        rval, updates = theano.scan(_step, sequences=[mask, previous_state], 
-                outputs_info=[T.alloc(np_floatX(0.), n_samples, self.dim_proj), 
+        rval, updates = theano.scan(_step, 
+                sequences=[mask, previous_state], 
+                outputs_info=[
+                    T.alloc(np_floatX(0.), n_samples, self.dim_proj), 
                     T.alloc(np_floatX(0.), n_samples, self.dim_proj)], 
                 n_steps=nsteps)
         return rval[0]

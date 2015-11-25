@@ -169,8 +169,8 @@ def production_rules(relation):
 	rule_set1 = _get_production_rules(Tree(arg1_tree), token_indices1)
 	rule_set2 = _get_production_rules(Tree(arg2_tree), token_indices2)
 	
-	if len(rule_set1) == 0 or len(rule_set2) == 0:
-		return []
+	#if len(rule_set1) == 0 or len(rule_set2) == 0:
+	#	return []
 
 	feature_vector = []
 	for rule in rule_set1.intersection(rule_set2):

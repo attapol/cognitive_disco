@@ -179,7 +179,7 @@ class AdagradTrainer(Trainer):
         print 'Taking gradient...'
         self.gparams = T.grad(cost_function, self.model.params)
 
-        self.gparams = [T.maximum(-5, T.minimum(5, x)) for x in self.gparams]
+        #self.gparams = [T.maximum(-5, T.minimum(5, x)) for x in self.gparams]
         #        for x in self.model.params]
         self.sum_gradient_squareds = [
                 theano.shared(value=np.zeros(param.get_value().shape).\

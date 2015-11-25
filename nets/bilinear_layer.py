@@ -5,6 +5,7 @@ import scipy as sp
 import theano
 import theano.sparse
 import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
 import timeit
 
 from learning import AdagradTrainer
@@ -30,6 +31,7 @@ class NeuralNet(object):
         self.rng = layers[0].rng 
         self.input = layers[0].input
         self.output = layers[-1].output
+        self.predict = layers[-1].predict
         self.activation = layers[-1].activation
         self.crossentropy = layers[-1].crossentropy
         self.hinge_loss = layers[-1].hinge_loss
@@ -40,6 +42,120 @@ class NeuralNet(object):
     def reset(self, rng):
         for layer in self.layers:
             layer.reset(rng)
+
+class LinearLayer(object):
+    """Linear Layer that supports multiple separate input (sparse) vectors
+
+    """
+
+    def __init__(self, rng, n_in_list, n_out, 
+            use_sparse, X_list=None, Y=None, 
+            W_list=None, b=None, activation_fn=T.tanh,
+            dropout_p=1.0):
+        self.n_in_list = n_in_list
+        self.n_out = n_out
+        self.dropout_p=dropout_p
+
+        if W_list is None:
+            W_list = []
+            total_n_in = np.sum(n_in_list)
+            for n_in in n_in_list:
+                W_values = np.asarray(
+                    rng.uniform(
+                        low=-np.sqrt(6. / (total_n_in + n_out)),
+                        high=np.sqrt(6. / (total_n_in + n_out)),
+                        size=(n_in, n_out)
+                    ),
+                    dtype=theano.config.floatX
+                )
+                W = theano.shared(value=W_values, borrow=True)
+                W_list.append(W)
+        if b is None:
+            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
+            b = theano.shared(value=b_values, borrow=True)
+
+        if X_list is None:
+            if use_sparse:
+                self.input = [theano.sparse.csr_matrix() \
+                        for i in xrange(len(n_in_list))]
+            else:
+                self.input = [T.matrix() for i in xrange(len(n_in_list))]
+        else:
+            assert(len(X_list) == len(n_in_list))
+            self.input = X_list
+
+        self.W_list = W_list
+        self.b = b
+        self.params = self.W_list + [self.b]
+        self.activation_fn = activation_fn
+        self.rng = rng
+        self.srng = RandomStreams()
+
+        #net = self.b 
+        net_train = self.b
+        net_test = self.b
+        for i in range(len(self.input)):
+            dropout_mask = self.srng.binomial(size=self.input.shape, p=dropout_p)
+            if type(self.input[i]) == theano.sparse.basic.SparseVariable:
+                #net += theano.sparse.structured_dot(
+                        #self.input[i],self.W_list[i])
+                net_train += theano.sparse.structured_dot(
+                        self.input[i] * dropout_mask, self.W_list[i])
+                net_test += theano.sparse.structured_dot(
+                        self.input[i], self.W_list[i] * dropout_p)
+            else:
+                #net += T.dot(self.input[i], self.W_list[i])
+                net_train += T.dot(self.input[i] * dropout_mask,
+                        self.W_list[i])
+                net_test += T.dot(self.input[i], 
+                        self.W_list[i] * dropout_p)
+        
+        self.activation_train = (
+            net_train if activation_fn is None
+            else activation_fn(net_train)
+        )
+        self.activation_test = (
+            net_test if activation_fn is None
+            else activation_fn(net_test)
+        )
+
+
+        if Y is None:
+            self.output = []
+            self.crossentropy = None
+        else:
+            self.output = [Y]
+            self.predict = [self.activation_test.argmax(1)]
+            hinge_loss_instance, _ = theano.scan(
+                    lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
+                    sequences=[self.activation_train, Y])
+            self.hinge_loss = hinge_loss_instance.sum()
+            likelihood = self.activation_train[T.arange(Y.shape[0]), Y]
+            self.crossentropy = -T.mean(T.log(likelihood))
+
+    def reset(self, rng):
+        for W, n_in in zip(self.W_list, self.n_in_list):
+            total_n_in = np.sum(self.n_in_list)
+            W_values = np.asarray(
+                rng.uniform(
+                    low=-np.sqrt(6. / (total_n_in + self.n_out)),
+                    high=np.sqrt(6. / (total_n_in + self.n_out)),
+                    size=(n_in, self.n_out)
+                ),
+                dtype=theano.config.floatX
+            )
+            W.set_value(W_values)
+        b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
+        self.b.set_value(b_values)
+
+    def copy(self, X_list=None, use_sparse=False):
+        l = LinearLayer(self.rng, self.n_in_list, self.n_out, use_sparse,
+            X_list=X_list, W_list=self.W_list, b=self.b,
+            Y=self.output[0] if len(self.output) != 0 else None, 
+            activation_fn=self.activation_fn, 
+            dropout_p=self.dropout_p)
+        return l
+
 
 class MJMModel(object):
 
@@ -85,39 +201,67 @@ class GlueLayer(object):
             self.crossentropy = \
                     -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
+def make_multilayer_net(rng, n_in_list, X_list, Y, use_sparse, 
+        num_hidden_layers, num_hidden_units, num_output_units,
+        output_activation_fn=T.nnet.softmax):
+    if num_hidden_layers == 0:
+        n_out = num_output_units
+        activation_fn = output_activation_fn
+    else:
+        n_out = num_hidden_units
+        activation_fn = T.tanh
+    layer = LinearLayer(rng, n_in_list=n_in_list, n_out=n_out, 
+            use_sparse=use_sparse, X_list=X_list, Y=Y,
+            activation_fn=activation_fn)
+    layers = add_hidden_layers(layer, 
+            num_hidden_units, num_hidden_layers, num_output_units,
+            output_activation_fn)
+    return NeuralNet(layers), layers
+
+def add_hidden_layers(layer, num_hidden_units, num_hidden_layers, num_out,
+        output_activation_fn=T.nnet.softmax):
+    top_layer = layer  
+    rng = layer.rng
+    layers = [layer]
+    for i in range(num_hidden_layers):
+        is_last_layer = i == (num_hidden_layers - 1)
+        if is_last_layer:
+            hidden_layer = LinearLayer(rng,
+                    n_in_list=[num_hidden_units],
+                    n_out=num_out,
+                    use_sparse=False,
+                    X_list=[top_layer.activation],
+                    Y=T.lvector(),
+                    activation_fn=T.nnet.softmax)
+        else:
+            hidden_layer = LinearLayer(rng, 
+                    n_in_list=[num_hidden_units],
+                    n_out=num_hidden_units,
+                    use_sparse=False,
+                    X_list=[top_layer.activation],
+                    activation_fn=T.tanh)
+        layers.append(hidden_layer)
+        top_layer = hidden_layer
+    return layers
+
 class MixtureOfExperts(object):
 
     def __init__(self, rng, n_in_list, expert_list, 
-            X_list, Y, W_list=None, b=None):
-        if W_list is None:
-            W_list = []
-            n_out = len(expert_list)
-            for n_in in n_in_list:
-                W_values = np.zeros((n_in, n_out), dtype=theano.config.floatX)
-                W = theano.shared(value=W_values, borrow=True)
-                W_list.append(W)
-        if b is None:
-            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-            b = theano.shared(value=b_values, borrow=True)
+            X_list, Y, num_hidden_layers=0, num_hidden_units=100):
+        
+        self.gating_net, _ = make_multilayer_net(rng, 
+                n_in_list, X_list, T.lvector(), False,
+                num_hidden_layers, num_hidden_units, len(expert_list))
 
-        self.input = X_list    
-
-        self.W_list = W_list
-        self.b = b
-        self.params = self.W_list + [self.b]
-        self.expert_list = expert_list
         self.n_in_list = n_in_list
+        self.input = X_list    
+        self.expert_list = expert_list
+
+        self.params = self.gating_net.params
         for expert in expert_list:
             self.params.extend(expert.params)
 
-        net = self.b
-        for i in range(len(self.input)):
-            if type(self.input[i]) == theano.sparse.basic.SparseVariable:
-                net += theano.sparse.structured_dot(
-                        self.input[i],self.W_list[i])
-            else:
-                net += T.dot(self.input[i], self.W_list[i])
-        gating_activation = T.nnet.softmax(net)
+        gating_activation = self.gating_net.activation
 
         self.activation = 0
         for i, expert in enumerate(expert_list):
@@ -130,118 +274,13 @@ class MixtureOfExperts(object):
                 lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
                 sequences=[self.activation, Y])
         self.hinge_loss = hinge_loss_instance.sum()
-        self.crossentropy = -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
+        self.crossentropy = \
+                -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
     def reset(self, rng):
-        for W, n_in in zip(self.W_list, self.n_in_list):
-            total_n_in = np.sum(self.n_in_list)
-            n_out = len(self.expert_list)
-            W_values = np.asarray(
-                rng.uniform(
-                    low=-np.sqrt(6. / (total_n_in + n_out)),
-                    high=np.sqrt(6. / (total_n_in + n_out)),
-                    size=(n_in, n_out)
-                ),
-                dtype=theano.config.floatX
-            )
-            W.set_value(W_values)
-        b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-        self.b.set_value(b_values)
+        self.gating_net.reset(rng)
         for expert in self.expert_list:
             expert.reset(rng)
-
-
-class LinearLayer(object):
-    """Linear Layer that supports multiple separate input (sparse) vectors
-
-    """
-
-    def __init__(self, rng, n_in_list, n_out, use_sparse, X_list=None, Y=None, 
-            W_list=None, b=None, activation_fn=T.tanh):
-        self.n_in_list = n_in_list
-        self.n_out = n_out
-
-        if W_list is None:
-            W_list = []
-            total_n_in = np.sum(n_in_list)
-            for n_in in n_in_list:
-                W_values = np.asarray(
-                    rng.uniform(
-                        low=-np.sqrt(6. / (total_n_in + n_out)),
-                        high=np.sqrt(6. / (total_n_in + n_out)),
-                        size=(n_in, n_out)
-                    ),
-                    dtype=theano.config.floatX
-                )
-                W = theano.shared(value=W_values, borrow=True)
-                W_list.append(W)
-        if b is None:
-            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-            b = theano.shared(value=b_values, borrow=True)
-
-        if X_list is None:
-            if use_sparse:
-                self.input = [theano.sparse.csr_matrix() \
-                        for i in xrange(len(n_in_list))]
-            else:
-                self.input = [T.matrix() for i in xrange(len(n_in_list))]
-        else:
-            assert(len(X_list) == len(n_in_list))
-            self.input = X_list
-
-        self.W_list = W_list
-        self.b = b
-        self.params = self.W_list + [self.b]
-        self.activation_fn = activation_fn
-        self.rng = rng
-        
-        net = self.b 
-        for i in range(len(self.input)):
-            if type(self.input[i]) == theano.sparse.basic.SparseVariable:
-                net += theano.sparse.structured_dot(
-                        self.input[i],self.W_list[i])
-            else:
-                net += T.dot(self.input[i], self.W_list[i])
-        
-        self.activation = (
-            net if activation_fn is None
-            else activation_fn(net)
-        )
-
-        if Y is None:
-            self.output = []
-            self.crossentropy = None
-        else:
-            self.output = [Y]
-            self.predict = [self.activation.argmax(1)]
-            hinge_loss_instance, _ = theano.scan(
-                    lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
-                    sequences=[self.activation, Y])
-            self.hinge_loss = hinge_loss_instance.sum()
-            self.crossentropy = \
-                    -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
-
-    def reset(self, rng):
-        for W, n_in in zip(self.W_list, self.n_in_list):
-            total_n_in = np.sum(self.n_in_list)
-            W_values = np.asarray(
-                rng.uniform(
-                    low=-np.sqrt(6. / (total_n_in + self.n_out)),
-                    high=np.sqrt(6. / (total_n_in + self.n_out)),
-                    size=(n_in, self.n_out)
-                ),
-                dtype=theano.config.floatX
-            )
-            W.set_value(W_values)
-        b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
-        self.b.set_value(b_values)
-
-    def copy(self, X_list=None, use_sparse=False):
-        l = LinearLayer(self.rng, self.n_in_list, self.n_out, use_sparse,
-            X_list=X_list, W_list=self.W_list, b=self.b,
-            Y=self.output[0] if len(self.output) != 0 else None, 
-            activation_fn=self.activation_fn)
-        return l
 
 class LinearLayerTensorOutput(object):
     """Linear Layer that supports tensor-shaped output

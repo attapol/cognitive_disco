@@ -9,7 +9,7 @@ import theano.tensor as T
 from stlstm_experiments import net_experiment_stlstm
 from tlstm_experiments import net_experiment_tlstm
 from lstm_experiments import net_experiment_lstm, net_experiment_tree_lstm
-from mixture_experiments import net_mixture_experiment1
+from mixture_experiments import net_mixture_experiment1, net_mixture_experiment2
 
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \

@@ -14,7 +14,7 @@ import cognitive_disco.nets.util as util
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.nets.bilinear_layer import \
-        LinearLayer, MixtureOfExperts, NeuralNet
+        NeuralNet, MixtureOfExperts, make_multilayer_net
 
 from theano import config
 import theano.sparse
@@ -23,25 +23,70 @@ import numpy as np
 from scipy.sparse import coo_matrix
 
 def net_mixture_experiment1(dir_list, args):
-    """Experiment 1
+    """Experiment 1 MOE 
 
     Read the sparse feature matrices from the files
-    Read the parameters from the file (pretrained model) or not
-
     Use Mixture of Experts model
-    The gating units do not have any hidden layers.
     """
     sparse_feature_file = args[0]
-    num_units = int(args[1])
+    embedding_size = int(args[1])
     cont_num_hidden_layers = int(args[2])
     sparse_num_hidden_layers = int(args[3])
-    proj_type = args[4]
+    mixture_num_hidden_layers = int(args[4])
+    proj_type = args[5]
 
     experiment_name = sys._getframe().f_code.co_name    
-    json_file = util.set_logger('%s_%sunits_%sh_%sh_%s' % \
-            (experiment_name,  num_units, 
+    json_file = util.set_logger('%s_%sunits_%sh_%sh_%sh_%s' % \
+            (experiment_name,  embedding_size, 
                 cont_num_hidden_layers,
-                sparse_num_hidden_layers, proj_type))
+                sparse_num_hidden_layers, 
+                mixture_num_hidden_layers,
+                proj_type))
+
+    data_triplet = _load_continuous_sparse_features(dir_list, embedding_size, 
+            sparse_feature_file, proj_type)
+    num_hidden_unit_list = [50, 200, 300, 400, 500]
+    num_reps = 20
+    for num_hidden_unit in num_hidden_unit_list:
+        _net_mixture_experiment_helper(experiment_name, 
+                json_file, data_triplet, num_reps, 
+                sparse_num_hidden_layers, cont_num_hidden_layers,
+                True, mixture_num_hidden_layers, num_hidden_unit, proj_type)
+
+def net_mixture_experiment2(dir_list, args):
+    """Experiment 2 Linearly combining features
+
+    No gating network. We simply concatenate the hidden layer of 
+    the continuous features with the sparse feature vector.
+
+    """
+    sparse_feature_file = args[0]
+    embedding_size = int(args[1])
+    cont_num_hidden_layers = int(args[2])
+    sparse_num_hidden_layers = int(args[3])
+    mixture_num_hidden_layers = int(args[4])
+    proj_type = args[5]
+
+    experiment_name = sys._getframe().f_code.co_name    
+    json_file = util.set_logger('%s_%sunits_%sh_%sh_%sh_%s' % \
+            (experiment_name,  embedding_size, 
+                cont_num_hidden_layers,
+                sparse_num_hidden_layers, 
+                mixture_num_hidden_layers,
+                proj_type))
+
+    data_triplet = _load_continuous_sparse_features(dir_list, embedding_size, 
+            sparse_feature_file, proj_type)
+    num_hidden_unit_list = [50, 200, 400, 500]
+    num_reps = 12
+    for num_hidden_unit in num_hidden_unit_list:
+        _net_mixture_experiment_helper(experiment_name, 
+                json_file, data_triplet, num_reps, 
+                sparse_num_hidden_layers, cont_num_hidden_layers,
+                False, mixture_num_hidden_layers, num_hidden_unit, proj_type)
+
+def _load_continuous_sparse_features(dir_list, embedding_size,
+        sparse_feature_file, proj_type):
     sense_lf = l.SecondLevelLabel()
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
@@ -51,7 +96,7 @@ def net_mixture_experiment1(dir_list, args):
     sfv_data_list = [get_sfv(relation_list, id_to_sfv, num_features) 
             for relation_list in relation_list_list]
 
-    word2vec_ff = util._get_word2vec_ff(num_units, proj_type)
+    word2vec_ff = util._get_word2vec_ff(embedding_size, proj_type)
     word2vec_data_list = [word2vec_ff(relation_list) 
             for relation_list in relation_list_list]
 
@@ -61,92 +106,66 @@ def net_mixture_experiment1(dir_list, args):
             util.label_vectorize(relation_list_list, sense_lf)
     data_triplet = DataTriplet(
             data_list, [[x] for x in label_vector_triplet], [label_alphabet])
-
-    num_hidden_unit_list = [50, 200, 300, 400] 
-    num_reps = 20
-    for num_hidden_unit in num_hidden_unit_list:
-        _net_mixture_experiment_helper(experiment_name, 
-                json_file, data_triplet, num_reps, 
-                sparse_num_hidden_layers, cont_num_hidden_layers,
-                num_hidden_unit, proj_type)
-
-
-
-def _add_hidden_layers(layer, num_hidden_units, num_hidden_layers, num_out):
-    top_layer = layer  
-    rng = layer.rng
-    layers = [layer]
-    for i in range(num_hidden_layers):
-        is_last_layer = i == (num_hidden_layers - 1)
-        if is_last_layer:
-            hidden_layer = LinearLayer(rng,
-                    n_in_list=[num_hidden_units],
-                    n_out=num_out,
-                    use_sparse=False,
-                    X_list=[top_layer.activation],
-                    Y=T.lvector(),
-                    activation_fn=T.nnet.softmax)
-        else:
-            hidden_layer = LinearLayer(rng, 
-                    n_in_list=[num_hidden_units],
-                    n_out=num_hidden_units,
-                    use_sparse=False,
-                    X_list=[top_layer.activation],
-                    activation_fn=T.tanh)
-        layers.append(hidden_layer)
-        top_layer = hidden_layer
-    return layers
-
-def _make_module(rng, n_in_list, X_list, use_sparse, 
-        num_hidden_layers, num_hidden_units, num_output_units):
-    if num_hidden_layers == 0:
-        n_out = num_output_units
-        activation_fn = T.nnet.softmax
-        Y = T.lvector()
-    else:
-        n_out = num_hidden_units
-        activation_fn = T.tanh
-        Y = None
-    layer = LinearLayer(rng, n_in_list=n_in_list, n_out=n_out, 
-            use_sparse=True, X_list=X_list, Y=Y, activation_fn=activation_fn)
-    layers = _add_hidden_layers(layer, 
-            num_hidden_units, num_hidden_layers, num_output_units)
-    return NeuralNet(layers)
+    return data_triplet
 
 def _net_mixture_experiment_helper(experiment_name, 
         json_file, data_triplet, num_reps, sparse_num_hidden_layers, 
-        cont_num_hidden_layers, num_hidden_units, proj_type):
+        cont_num_hidden_layers, 
+        use_moe, mixture_num_hidden_layers,
+        num_hidden_units, proj_type):
     rng = np.random.RandomState(100)
     learning_rate = 0.001
     lr_smoother = 0.01
 
-    # the first one should be sparse
+    if use_moe:
+        output_activation_fn = T.nnet.softmax
+        n_out = data_triplet.output_dimensions()[0]
+    else:
+        output_activation_fn = T.tanh
+        n_out = num_hidden_units
+
+    # the first one must be sparse
     X_list = [theano.sparse.csr_matrix(), T.matrix(), T.matrix()]
-    sf_net = _make_module(rng, 
+    sf_net, sf_layers = make_multilayer_net(rng, 
             n_in_list=data_triplet.input_dimensions()[0:1],
-            X_list=X_list[0:1], use_sparse=True,
+            X_list=X_list[0:1], Y=T.lvector(), use_sparse=True,
             num_hidden_layers=sparse_num_hidden_layers, 
             num_hidden_units=num_hidden_units, 
-            num_output_units=data_triplet.output_dimensions()[0])
-    word2vec_net = _make_module(rng, 
+            num_output_units=n_out,
+            output_activation_fn=output_activation_fn)
+    word2vec_net, word2vec_layers = make_multilayer_net(rng, 
             n_in_list=data_triplet.input_dimensions()[1:],
-            X_list=X_list[1:], use_sparse=False,
+            X_list=X_list[1:], Y=T.lvector(), use_sparse=False,
             num_hidden_layers=cont_num_hidden_layers, 
             num_hidden_units=num_hidden_units, 
-            num_output_units=data_triplet.output_dimensions()[0])
+            num_output_units=n_out,
+            output_activation_fn=output_activation_fn)
 
-    moe = MixtureOfExperts(rng,
-            n_in_list=data_triplet.input_dimensions(),
-            expert_list=[sf_net, word2vec_net],
-            X_list=X_list, 
-            Y=T.lvector())
+    if use_moe:
+        complete_net = MixtureOfExperts(rng,
+                n_in_list=data_triplet.input_dimensions(),
+                expert_list=[sf_net, word2vec_net],
+                X_list=X_list, Y=T.lvector(),
+                num_hidden_layers=mixture_num_hidden_layers, 
+                num_hidden_units=num_hidden_units)
+    else:
+        mixture_net, mixture_layers = make_multilayer_net(rng,
+                n_in_list=[sf_layers[-1].n_out, word2vec_layers[-1].n_out],
+                X_list=[sf_layers[-1].activation, word2vec_layers[-1].activation],
+                Y=T.lvector(),
+                use_sparse=False,
+                num_hidden_layers=mixture_num_hidden_layers,
+                num_hidden_units=num_hidden_units,
+                num_output_units=data_triplet.output_dimensions()[0])
+        complete_net = NeuralNet(sf_layers + word2vec_layers + mixture_layers)
+        complete_net.input = X_list
 
-    trainer = AdagradTrainer(moe, moe.crossentropy, 
+    trainer = AdagradTrainer(complete_net, complete_net.crossentropy, 
             learning_rate, lr_smoother, data_triplet, _make_givens)
     for rep in xrange(num_reps):
         random_seed = rep
         rng = np.random.RandomState(random_seed)
-        moe.reset(rng)
+        complete_net.reset(rng)
         trainer.reset()
 
         minibatch_size = np.random.randint(20, 60)
@@ -174,6 +193,7 @@ def _net_mixture_experiment_helper(experiment_name,
                 'projection' : proj_type,
                 }
         json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
+
 
 def _make_givens(givens, input_vec, T_training_data, 
             output_vec, T_training_data_label, start_idx, end_idx):
