@@ -10,7 +10,7 @@ import cognitive_disco.base_label_functions as l
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
-        NeuralNet, make_multilayer_net, make_multilayer_net_from_layers
+        NeuralNet, make_multilayer_net_from_layers
 from cognitive_disco.nets.attention import \
         AttentionModelSimple 
 from cognitive_disco.nets.lstm import prep_serrated_matrix_relations
@@ -23,6 +23,10 @@ def att_experiment1(dir_list, args):
     num_units = int(args[0])
     num_hidden_layers = int(args[1])
     num_att_hidden_layer = int(args[2])
+    dropout_arg = args[3]
+    assert(dropout_arg =='d' or dropout_arg =='n')
+    dropout = True if dropout_arg == 'd' else False
+    
 
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
@@ -39,36 +43,37 @@ def att_experiment1(dir_list, args):
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
             else [200, 300, 400, 600] 
 
-    json_file = util.set_logger('%s_%sunits_%sh_%sh' % \
+    json_file = util.set_logger('%s_%sunits_%sh_%sh_%s' % \
             (experiment_name, num_units, 
-                num_hidden_layers, num_att_hidden_layer))
+                num_hidden_layers, num_att_hidden_layer, dropout_arg))
     for num_hidden_units in num_hidden_unit_list:
         _att_experiment_ff_helper(experiment_name,
                 json_file, data_triplet, wbm, num_reps, 
-                num_att_hidden_layer, num_hidden_layers, num_hidden_units)
+                num_att_hidden_layer, num_hidden_layers, num_hidden_units,
+                dropout)
 
 
 def _att_experiment_ff_helper(experiment_name, 
         json_file, data_triplet, wbm, num_reps, 
-        num_att_hidden_layer, num_hidden_layers, num_hidden_units):
+        num_att_hidden_layer, num_hidden_layers, num_hidden_units,
+        dropout):
     rng = np.random.RandomState(100)
 
     arg1_model = AttentionModelSimple(rng, 
             wbm.num_units, num_att_hidden_layer, num_hidden_units,
-            dropout=True)
+            dropout=dropout)
     arg2_model = AttentionModelSimple(rng, 
             wbm.num_units, num_att_hidden_layer, num_hidden_units,
-            dropout=True)
-    _, predict_layers = make_multilayer_net_from_layers(
+            dropout=dropout)
+    _, all_layers = make_multilayer_net_from_layers(
             input_layers=[arg1_model, arg2_model],
             Y=T.lvector(), use_sparse=False,
             num_hidden_layers=num_hidden_layers,
             num_hidden_units=num_hidden_units,
             num_output_units=data_triplet.output_dimensions()[0],
             output_activation_fn=T.nnet.softmax,
-            dropout=True)
-    layers = [arg1_model, arg2_model] + predict_layers
-    nn = NeuralNet(layers)
+            dropout=dropout)
+    nn = NeuralNet(all_layers)
     nn.input = arg1_model.input + arg2_model.input
 
     learning_rate = 0.001
@@ -101,6 +106,7 @@ def _att_experiment_ff_helper(experiment_name,
                 'experiment name': experiment_name,
                 'num hidden units': num_hidden_units,
                 'cost function': 'crossentropy',
+                'dropout': dropout
                 }
         json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
 
