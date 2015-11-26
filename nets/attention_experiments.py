@@ -10,9 +10,9 @@ import cognitive_disco.base_label_functions as l
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
-        BilinearLayer, LinearLayer, NeuralNet, make_multilayer_net
+        NeuralNet, make_multilayer_net, make_multilayer_net_from_layers
 from cognitive_disco.nets.attention import \
-        AttentionModelSimple, AttentionModelSimpleHiddenLayer
+        AttentionModelSimple 
 from cognitive_disco.nets.lstm import prep_serrated_matrix_relations
 import cognitive_disco.nets.util as util
 
@@ -22,7 +22,7 @@ def att_experiment1(dir_list, args):
     sense_lf = l.SecondLevelLabel()
     num_units = int(args[0])
     num_hidden_layers = int(args[1])
-    use_att_hidden_layer = int(args[2])
+    num_att_hidden_layer = int(args[2])
 
     relation_list_list = [extract_implicit_relations(dir, sense_lf) 
             for dir in dir_list]
@@ -37,39 +37,36 @@ def att_experiment1(dir_list, args):
             data_list, [[x] for x in label_vectors], [label_alphabet])
     num_reps = 10
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
-            else [20, 50, 200, 300, 400] 
+            else [200, 300, 400, 600] 
 
-    json_file = util.set_logger('%s_%sunits_%sh_%s' % \
-            (experiment_name, num_units, num_hidden_layers, use_att_hidden_layer))
+    json_file = util.set_logger('%s_%sunits_%sh_%sh' % \
+            (experiment_name, num_units, 
+                num_hidden_layers, num_att_hidden_layer))
     for num_hidden_units in num_hidden_unit_list:
         _att_experiment_ff_helper(experiment_name,
                 json_file, data_triplet, wbm, num_reps, 
-                use_att_hidden_layer,
-                num_hidden_layers=num_hidden_layers, 
-                num_hidden_units=num_hidden_units)
+                num_att_hidden_layer, num_hidden_layers, num_hidden_units)
 
 
 def _att_experiment_ff_helper(experiment_name, 
         json_file, data_triplet, wbm, num_reps, 
-        use_att_hidden_layer, num_hidden_layers, num_hidden_units):
+        num_att_hidden_layer, num_hidden_layers, num_hidden_units):
     rng = np.random.RandomState(100)
 
-    if use_att_hidden_layer:
-        arg1_model = AttentionModelSimpleHiddenLayer(rng, 
-                wbm.num_units, num_hidden_units)
-        arg2_model = AttentionModelSimpleHiddenLayer(rng, 
-                wbm.num_units, num_hidden_units)
-    else:
-        arg1_model = AttentionModelSimple(rng, wbm.num_units)
-        arg2_model = AttentionModelSimple(rng, wbm.num_units)
-    _, predict_layers = make_multilayer_net(rng,
-            n_in_list = [wbm.num_units, wbm.num_units],
-            X_list = [arg1_model.activation, arg2_model.activation],
+    arg1_model = AttentionModelSimple(rng, 
+            wbm.num_units, num_att_hidden_layer, num_hidden_units,
+            dropout=True)
+    arg2_model = AttentionModelSimple(rng, 
+            wbm.num_units, num_att_hidden_layer, num_hidden_units,
+            dropout=True)
+    _, predict_layers = make_multilayer_net_from_layers(
+            input_layers=[arg1_model, arg2_model],
             Y=T.lvector(), use_sparse=False,
             num_hidden_layers=num_hidden_layers,
             num_hidden_units=num_hidden_units,
             num_output_units=data_triplet.output_dimensions()[0],
-            output_activation_fn=T.nnet.softmax)
+            output_activation_fn=T.nnet.softmax,
+            dropout=True)
     layers = [arg1_model, arg2_model] + predict_layers
     nn = NeuralNet(layers)
     nn.input = arg1_model.input + arg2_model.input

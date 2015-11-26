@@ -32,7 +32,8 @@ class NeuralNet(object):
         self.input = layers[0].input
         self.output = layers[-1].output
         self.predict = layers[-1].predict
-        self.activation = layers[-1].activation
+        self.activation_train = layers[-1].activation_train
+        self.activation_test = layers[-1].activation_test
         self.crossentropy = layers[-1].crossentropy
         self.hinge_loss = layers[-1].hinge_loss
         for layer in layers:
@@ -43,72 +44,76 @@ class NeuralNet(object):
         for layer in self.layers:
             layer.reset(rng)
 
+class InputLayer(object):
+
+    def __init__(self, rng, size, use_sparse, X=None):
+        #concatenate all of the variables in the input list
+        if X is None:
+            self.input = [theano.sparse.csr_matrix()] if use_sparse \
+                    else [T.matrix()]
+        else:
+            self.input = [X]
+        self.rng = rng
+        self.n_out = size
+        self.activation_train = X
+        self.activation_test = X
+        self.params = []
+
+    def reset(self, rng):
+        pass
+
 class LinearLayer(object):
     """Linear Layer that supports multiple separate input (sparse) vectors
 
+    This new version is not backward compatible and 
+    will break all of the previous experiments that precede
+    attention_experiments. 
     """
 
-    def __init__(self, rng, n_in_list, n_out, 
-            use_sparse, X_list=None, Y=None, 
-            W_list=None, b=None, activation_fn=T.tanh,
-            dropout_p=1.0):
-        self.n_in_list = n_in_list
+    def __init__(self, rng, n_out, use_sparse, parent_layers=[], Y=None, 
+            activation_fn=T.tanh, dropout_p=1.0):
         self.n_out = n_out
-        self.dropout_p=dropout_p
+        self.dropout_p = dropout_p
+        self.use_sparse = use_sparse
+        self.parent_layers = parent_layers
 
-        if W_list is None:
-            W_list = []
-            total_n_in = np.sum(n_in_list)
-            for n_in in n_in_list:
-                W_values = np.asarray(
-                    rng.uniform(
-                        low=-np.sqrt(6. / (total_n_in + n_out)),
-                        high=np.sqrt(6. / (total_n_in + n_out)),
-                        size=(n_in, n_out)
-                    ),
-                    dtype=theano.config.floatX
-                )
-                W = theano.shared(value=W_values, borrow=True)
-                W_list.append(W)
-        if b is None:
-            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-            b = theano.shared(value=b_values, borrow=True)
+        self.total_n_in = 0
+        for parent_layer in parent_layers:
+            self.total_n_in += parent_layer.n_out
 
-        if X_list is None:
-            if use_sparse:
-                self.input = [theano.sparse.csr_matrix() \
-                        for i in xrange(len(n_in_list))]
-            else:
-                self.input = [T.matrix() for i in xrange(len(n_in_list))]
-        else:
-            assert(len(X_list) == len(n_in_list))
-            self.input = X_list
-
-        self.W_list = W_list
-        self.b = b
+        W_values_list, b_values = self._get_init_param_values(rng)
+        self.W_list = [theano.shared(value=W_values, borrow=True) 
+                for W_values in W_values_list]
+        self.b = theano.shared(value=b_values, borrow=True)
         self.params = self.W_list + [self.b]
+
         self.activation_fn = activation_fn
         self.rng = rng
         self.srng = RandomStreams()
 
-        #net = self.b 
-        net_train = self.b
-        net_test = self.b
-        for i in range(len(self.input)):
-            dropout_mask = self.srng.binomial(size=self.input.shape, p=dropout_p)
-            if type(self.input[i]) == theano.sparse.basic.SparseVariable:
-                #net += theano.sparse.structured_dot(
-                        #self.input[i],self.W_list[i])
+        if n_out == 1:
+            net_train = self.b[0]
+            net_test = self.b[0]
+        else:
+            net_train = self.b
+            net_test = self.b
+
+        for i, parent_layer in enumerate(parent_layers):
+            input_train = parent_layer.activation_train
+            input_test = parent_layer.activation_test
+            dropout_mask = self.srng.binomial(
+                    size=input_train.shape, p=dropout_p)
+            if type(input_train) == theano.sparse.basic.SparseVariable:
                 net_train += theano.sparse.structured_dot(
-                        self.input[i] * dropout_mask, self.W_list[i])
+                        input_train * dropout_mask, self.W_list[i])
                 net_test += theano.sparse.structured_dot(
-                        self.input[i], self.W_list[i] * dropout_p)
+                        input_test, self.W_list[i] * dropout_p)
             else:
-                #net += T.dot(self.input[i], self.W_list[i])
-                net_train += T.dot(self.input[i] * dropout_mask,
-                        self.W_list[i])
-                net_test += T.dot(self.input[i], 
-                        self.W_list[i] * dropout_p)
+                net_train += T.dot(
+                        input_train * dropout_mask, self.W_list[i])
+                net_test += T.dot(
+                        input_test, self.W_list[i] * dropout_p)
+
         
         self.activation_train = (
             net_train if activation_fn is None
@@ -119,43 +124,50 @@ class LinearLayer(object):
             else activation_fn(net_test)
         )
 
-
         if Y is None:
             self.output = []
             self.crossentropy = None
+            self.predict = []
+            self.hinge_loss = None
         else:
             self.output = [Y]
             self.predict = [self.activation_test.argmax(1)]
             hinge_loss_instance, _ = theano.scan(
-                    lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1 ,
+                    lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1,
                     sequences=[self.activation_train, Y])
             self.hinge_loss = hinge_loss_instance.sum()
             likelihood = self.activation_train[T.arange(Y.shape[0]), Y]
             self.crossentropy = -T.mean(T.log(likelihood))
 
-    def reset(self, rng):
-        for W, n_in in zip(self.W_list, self.n_in_list):
-            total_n_in = np.sum(self.n_in_list)
-            W_values = np.asarray(
-                rng.uniform(
-                    low=-np.sqrt(6. / (total_n_in + self.n_out)),
-                    high=np.sqrt(6. / (total_n_in + self.n_out)),
-                    size=(n_in, self.n_out)
-                ),
-                dtype=theano.config.floatX
-            )
-            W.set_value(W_values)
+    def _get_init_param_values(self, rng):
+        W_list = []
+        for parent_layer in self.parent_layers:
+            n_in = parent_layer.n_out
+            n_out = self.n_out
+            W = np.asarray(
+                    rng.uniform(
+                        low=np.sqrt(6. / (self.total_n_in + n_out)),
+                        high=np.sqrt(6. / (self.total_n_in + n_out)),
+                        size=(n_in, n_out)),
+                    dtype=theano.config.floatX
+                )
+            W_list.append(W)
         b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
+        return W_list, b_values
+
+    def reset(self, rng):
+        W_values_list, b_values = self._get_init_param_values(rng)
+        for W, W_values in zip(self.W_list, self.W_values_list):
+            W.set_value(W_values)
         self.b.set_value(b_values)
 
-    def copy(self, X_list=None, use_sparse=False):
+    def __copy(self, X_list=None, use_sparse=False):
         l = LinearLayer(self.rng, self.n_in_list, self.n_out, use_sparse,
             X_list=X_list, W_list=self.W_list, b=self.b,
             Y=self.output[0] if len(self.output) != 0 else None, 
             activation_fn=self.activation_fn, 
             dropout_p=self.dropout_p)
         return l
-
 
 class MJMModel(object):
 
@@ -186,8 +198,8 @@ class GlueLayer(object):
             net if activation_fn is None
             else activation_fn(net)
         )
-        self.params = \
-                list(itertools.chain(*[layer.params for layer in layer_list]))
+        self.params = list(itertools.chain(
+            *[layer.params for layer in layer_list]))
         self.input = [x for x in X_list]
         if Y is None:
             self.output = []
@@ -201,47 +213,46 @@ class GlueLayer(object):
             self.crossentropy = \
                     -T.mean(T.log(self.activation[T.arange(Y.shape[0]), Y]))
 
-def make_multilayer_net(rng, n_in_list, X_list, Y, use_sparse, 
+def make_multilayer_net(rng, n_in, X, Y, use_sparse, 
         num_hidden_layers, num_hidden_units, num_output_units,
-        output_activation_fn=T.nnet.softmax):
-    if num_hidden_layers == 0:
-        n_out = num_output_units
-        activation_fn = output_activation_fn
-    else:
-        n_out = num_hidden_units
-        activation_fn = T.tanh
-    layer = LinearLayer(rng, n_in_list=n_in_list, n_out=n_out, 
-            use_sparse=use_sparse, X_list=X_list, Y=Y,
-            activation_fn=activation_fn)
-    layers = add_hidden_layers(layer, 
-            num_hidden_units, num_hidden_layers, num_output_units,
-            output_activation_fn)
+        output_activation_fn=T.nnet.softmax,
+        dropout=True):
+    input_layer = InputLayer(rng, n_in, use_sparse, X)
+    return make_multilayer_net_from_layers([input_layer], Y, use_sparse,
+        num_hidden_layers, num_hidden_units, num_output_units,
+        output_activation_fn, dropout)
+
+def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
+        num_hidden_layers, num_hidden_units, num_output_units,
+        output_activation_fn=T.nnet.softmax, dropout=True):
+    rng = input_layers[0].rng
+    layers = input_layers
+    hidden_layers = add_hidden_layers(input_layers,
+            num_hidden_units, num_hidden_layers, dropout)
+    layers.extend(hidden_layers)
+    output_layer = LinearLayer(rng, num_output_units, False,
+            parent_layers=layers[-1:], Y=Y,
+            activation_fn=output_activation_fn,
+            dropout_p=0.5 if dropout else 1)
+    layers.append(output_layer)
     return NeuralNet(layers), layers
 
-def add_hidden_layers(layer, num_hidden_units, num_hidden_layers, num_out,
-        output_activation_fn=T.nnet.softmax):
-    top_layer = layer  
-    rng = layer.rng
-    layers = [layer]
+
+def add_hidden_layers(input_layers,
+        num_hidden_units, num_hidden_layers, dropout):
+    parent_layers = input_layers
+    layers = input_layers
+    rng = input_layers[0].rng
     for i in range(num_hidden_layers):
-        is_last_layer = i == (num_hidden_layers - 1)
-        if is_last_layer:
-            hidden_layer = LinearLayer(rng,
-                    n_in_list=[num_hidden_units],
-                    n_out=num_out,
-                    use_sparse=False,
-                    X_list=[top_layer.activation],
-                    Y=T.lvector(),
-                    activation_fn=T.nnet.softmax)
+        if i == 0:
+            dropout_p = 0.8
         else:
-            hidden_layer = LinearLayer(rng, 
-                    n_in_list=[num_hidden_units],
-                    n_out=num_hidden_units,
-                    use_sparse=False,
-                    X_list=[top_layer.activation],
-                    activation_fn=T.tanh)
+            dropout_p = 0.5
+        hidden_layer = LinearLayer(rng, num_hidden_units, False,
+                parent_layers, activation_fn=T.tanh, 
+                dropout_p=dropout_p if dropout else 1)
         layers.append(hidden_layer)
-        top_layer = hidden_layer
+        parent_layers = [hidden_layer]
     return layers
 
 class MixtureOfExperts(object):
