@@ -49,10 +49,8 @@ class InputLayer(object):
     def __init__(self, rng, size, use_sparse, X=None):
         #concatenate all of the variables in the input list
         if X is None:
-            self.input = [theano.sparse.csr_matrix()] if use_sparse \
-                    else [T.matrix()]
-        else:
-            self.input = [X]
+            X = theano.sparse.csr_matrix() if use_sparse else T.matrix()
+        self.input = [X]
         self.rng = rng
         self.n_out = size
         self.activation_train = X
@@ -114,15 +112,10 @@ class LinearLayer(object):
                 net_test += T.dot(
                         input_test, self.W_list[i] * dropout_p)
 
-        
-        self.activation_train = (
-            net_train if activation_fn is None
+        self.activation_train = net_train if activation_fn is None\
             else activation_fn(net_train)
-        )
-        self.activation_test = (
-            net_test if activation_fn is None
+        self.activation_test =  net_test if activation_fn is None\
             else activation_fn(net_test)
-        )
 
         if Y is None:
             self.output = []
@@ -151,13 +144,15 @@ class LinearLayer(object):
                         size=(n_in, n_out)),
                     dtype=theano.config.floatX
                 )
+            if n_out == 1:
+                W = np.zeros(n_in, dtype=theano.config.floatX)
             W_list.append(W)
         b_values = np.zeros((self.n_out,), dtype=theano.config.floatX)
         return W_list, b_values
 
     def reset(self, rng):
         W_values_list, b_values = self._get_init_param_values(rng)
-        for W, W_values in zip(self.W_list, self.W_values_list):
+        for W, W_values in zip(self.W_list, W_values_list):
             W.set_value(W_values)
         self.b.set_value(b_values)
 
@@ -172,9 +167,11 @@ class LinearLayer(object):
 class MJMModel(object):
 
     def __init__(self, layer_list, X_list):
-        self.params = list(itertools.chain(*[layer.params for layer in layer_list]))
+        self.params = list(itertools.chain(
+            *[layer.params for layer in layer_list]))
         self.input = [x for x in X_list]
-        self.output = list(itertools.chain(*[layer.output for layer in layer_list]))
+        self.output = list(itertools.chain(
+            *[layer.output for layer in layer_list]))
         self.predict = [layer.predict for layer in layer_list]
 
         #this can actually be anything, but we should play with weighting later
@@ -227,13 +224,19 @@ def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
         output_activation_fn=T.nnet.softmax, dropout=True):
     rng = input_layers[0].rng
     layers = input_layers
-    hidden_layers = add_hidden_layers(input_layers,
-            num_hidden_units, num_hidden_layers, dropout)
-    layers.extend(hidden_layers)
-    output_layer = LinearLayer(rng, num_output_units, False,
-            parent_layers=layers[-1:], Y=Y,
-            activation_fn=output_activation_fn,
-            dropout_p=0.5 if dropout else 1)
+    if num_hidden_layers > 0:
+        hidden_layers = add_hidden_layers(input_layers,
+                num_hidden_units, num_hidden_layers, dropout)
+        layers.extend(hidden_layers)
+        output_layer = LinearLayer(rng, num_output_units, False,
+                parent_layers=layers[-1:], Y=Y,
+                activation_fn=output_activation_fn,
+                dropout_p=0.5 if dropout else 1)
+    else:
+        output_layer = LinearLayer(rng, num_output_units, False,
+                parent_layers=input_layers, Y=Y,
+                activation_fn=output_activation_fn,
+                dropout_p=0.5 if dropout else 1)
     layers.append(output_layer)
     return NeuralNet(layers), layers
 
@@ -241,19 +244,19 @@ def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
 def add_hidden_layers(input_layers,
         num_hidden_units, num_hidden_layers, dropout):
     parent_layers = input_layers
-    layers = input_layers
+    hidden_layers = []
     rng = input_layers[0].rng
     for i in range(num_hidden_layers):
         if i == 0:
-            dropout_p = 0.8
+            dropout_p = 0.95
         else:
             dropout_p = 0.5
         hidden_layer = LinearLayer(rng, num_hidden_units, False,
                 parent_layers, activation_fn=T.tanh, 
                 dropout_p=dropout_p if dropout else 1)
-        layers.append(hidden_layer)
+        hidden_layers.append(hidden_layer)
         parent_layers = [hidden_layer]
-    return layers
+    return hidden_layers
 
 class MixtureOfExperts(object):
 
