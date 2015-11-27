@@ -104,7 +104,7 @@ class Trainer(object):
         """
 
         patience = 5000
-        patience_increase = 2.5 # wait this much longer when a new best is found
+        patience_increase = 10 # wait this much longer when a new best is found
         improvement_threshold = 1.0#  0.9975
 
         n_train_batches = self.num_training_data / minibatch_size
@@ -123,12 +123,10 @@ class Trainer(object):
                 iteration = (epoch - 1) * n_train_batches  + minibatch_index
                 start_time = timeit.default_timer()
 
-                """
                 if self.misc_function is not None:
                     misc = self.misc_function(minibatch_index, minibatch_size)
-                    for x in misc:
-                        print x
-                """
+                    print misc
+
                 c = self.train_function(minibatch_index, minibatch_size)
                 if np.isnan(c):
                     print 'NaN found at batch %s after seeing %s samples' % \

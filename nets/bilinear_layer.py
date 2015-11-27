@@ -49,10 +49,8 @@ class InputLayer(object):
     def __init__(self, rng, size, use_sparse, X=None):
         #concatenate all of the variables in the input list
         if X is None:
-            self.input = [theano.sparse.csr_matrix()] if use_sparse \
-                    else [T.matrix()]
-        else:
-            self.input = [X]
+            X = theano.sparse.csr_matrix() if use_sparse else T.matrix()
+        self.input = [X]
         self.rng = rng
         self.n_out = size
         self.activation_train = X
@@ -250,7 +248,7 @@ def add_hidden_layers(input_layers,
     rng = input_layers[0].rng
     for i in range(num_hidden_layers):
         if i == 0:
-            dropout_p = 0.8
+            dropout_p = 0.95
         else:
             dropout_p = 0.5
         hidden_layer = LinearLayer(rng, num_hidden_units, False,
