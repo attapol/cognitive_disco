@@ -139,7 +139,7 @@ class LinearLayer(object):
             n_out = self.n_out
             W = np.asarray(
                     rng.uniform(
-                        low=np.sqrt(6. / (self.total_n_in + n_out)),
+                        low=-np.sqrt(6. / (self.total_n_in + n_out)),
                         high=np.sqrt(6. / (self.total_n_in + n_out)),
                         size=(n_in, n_out)),
                     dtype=theano.config.floatX
@@ -223,7 +223,8 @@ def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
         num_hidden_layers, num_hidden_units, num_output_units,
         output_activation_fn=T.nnet.softmax, dropout=True):
     rng = input_layers[0].rng
-    layers = input_layers
+    layers = []
+    layers.extend(input_layers)
     if num_hidden_layers > 0:
         hidden_layers = add_hidden_layers(input_layers,
                 num_hidden_units, num_hidden_layers, dropout)
