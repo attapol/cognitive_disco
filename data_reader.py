@@ -1,4 +1,5 @@
 import json
+import codecs
 
 class DRelation(object):
     """Implicit discourse relation object
@@ -157,7 +158,7 @@ class Word(object):
 
 def extract_implicit_relations(data_folder, label_function=None):
     parse_file = '%s/pdtb-parses-plus.json' % data_folder
-    parse = json.load(open(parse_file))
+    parse = json.load(codecs.open(parse_file, encoding='utf8'))
 
     relation_file = '%s/pdtb-data-plus.json' % data_folder
     relation_dicts = [json.loads(x) for x in open(relation_file)]

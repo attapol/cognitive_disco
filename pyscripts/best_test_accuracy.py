@@ -3,7 +3,7 @@ import sys
 import json
 
 def print_best_test_accuracy(file_name, keys):
-    results = [json.loads(x) for x in open(file_name)]
+    results = [json.loads(x) for x in open(file_name) if x[0] != '#']
     best_result = {}
     best_test_accuracy = 0.0
     key = 'test accuracy'

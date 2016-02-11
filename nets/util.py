@@ -216,10 +216,61 @@ def get_wbm(num_units):
     wbm = WordEmbeddingMatrix(dict_file, vocab_file)
     return wbm
 
-def set_logger(file_name):
-    sys.stdout = open('%s.log' % file_name, 'w', 1)
+def set_logger(file_name, dry_mode=False):
+    if not dry_mode:
+        sys.stdout = open('%s.log' % file_name, 'w', 1)
     json_file = open('%s.json' % file_name, 'w', 1)
     return json_file
+
+import cognitive_disco.base_label_functions as l
+from cognitive_disco.nets.learning import DataTriplet
+from cognitive_disco.data_reader import extract_implicit_relations
+from cognitive_disco.nets.lstm import prep_serrated_matrix_relations
+
+def get_data_srm(dir_list, wbm, max_length=75):
+    sense_lf = l.SecondLevelLabel()
+    relation_list_list = [extract_implicit_relations(dir, sense_lf) 
+            for dir in dir_list]
+    data_list = []
+    for relation_list in relation_list_list:
+        data = prep_serrated_matrix_relations(relation_list, wbm, max_length)
+        data_list.append(data)
+    label_vectors, label_alphabet = \
+            label_vectorize(relation_list_list, sense_lf)
+    data_triplet = DataTriplet(
+            data_list, [[x] for x in label_vectors], [label_alphabet])
+    return data_triplet
+
+def make_givens_srm(givens, input_vec, T_training_data, 
+            output_vec, T_training_data_label, start_idx, end_idx):
+    """Make the 'given' dict for SGD training for discourse
+
+    the input vecs should be [X1 mask1 X2 mask2]
+    X1 and X2 are TxNxd serrated matrices.
+    """
+    # first arg embedding and mask
+    givens[input_vec[0]] = T_training_data[0][:,start_idx:end_idx, :]
+    givens[input_vec[1]] = T_training_data[1][:,start_idx:end_idx]
+
+    # second arg embedding and mask
+    givens[input_vec[2]] = T_training_data[2][:,start_idx:end_idx, :]
+    givens[input_vec[3]] = T_training_data[3][:,start_idx:end_idx]
+
+    for i, output_var in enumerate(output_vec):
+        givens[output_var] = T_training_data_label[i][start_idx:end_idx]
+
+def make_givens(givens, input_vec, T_training_data, 
+            output_vec, T_training_data_label, start_idx, end_idx):
+    """Make the 'given' dict for SGD training for discourse
+
+    the input vecs should be [X1 X2]
+    X1 and X2 are Nxd matrices.
+    """
+    # first arg embedding and mask
+    givens[input_vec[0]] = T_training_data[0][start_idx:end_idx]
+    givens[input_vec[1]] = T_training_data[1][start_idx:end_idx]
+    for i, output_var in enumerate(output_vec):
+        givens[output_var] = T_training_data_label[i][start_idx:end_idx]
 
 if __name__ == '__main__':
     fm = np.array([ [1, 0, 1],

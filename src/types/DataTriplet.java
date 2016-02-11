@@ -2,6 +2,10 @@ package types;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.Reader;
+import java.io.InputStreamReader;
+import java.io.FileInputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
 import pipes.Target2CoNLLLabel;
@@ -55,7 +59,7 @@ public class DataTriplet {
 	/*
 	 * importData has to be called first. The label scheme has to be explicitly selected.
 	 */
-	public InstanceList getData(DataSplitType dType) throws FileNotFoundException {
+	public InstanceList getData(DataSplitType dType) throws FileNotFoundException,UnsupportedEncodingException  {
 		switch (dType) {
 		case TRAINING:
 			return getTrainingSet();
@@ -67,15 +71,15 @@ public class DataTriplet {
 		return null;
 	}
 	
-	public InstanceList getTrainingSet() throws FileNotFoundException { 
+	public InstanceList getTrainingSet() throws FileNotFoundException, UnsupportedEncodingException { 
 		return trainingSet; 
 	}
 
-	public InstanceList getDevSet() throws FileNotFoundException { 
+	public InstanceList getDevSet() throws FileNotFoundException, UnsupportedEncodingException { 
 		return devSet; 
 	}
 
-	public InstanceList getTestSet() throws FileNotFoundException { 
+	public InstanceList getTestSet() throws FileNotFoundException, UnsupportedEncodingException { 
 		return testSet; 
 	}
 	
@@ -87,19 +91,19 @@ public class DataTriplet {
 	 * Import data from the raw file name. No fancy mapping
 	 * This is useful for a normal classification task in general.
 	 */
-	public int importData() throws FileNotFoundException{
+	public int importData() throws FileNotFoundException, UnsupportedEncodingException{
 		return importData(trainingFileName, devFileName, testFileName, null);
 	}
 
 	/*
 	 * Import data and convert the original sense label to the specified label type.
 	 */
-	public int importData(LabelType labelType) throws FileNotFoundException{
+	public int importData(LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException{
 		return importData(trainingFileName, devFileName, testFileName, labelType);
 	}
 	
 	public int importData(String trainingFileName, 
-			String devFileName, String testFileName, LabelType labelType) throws FileNotFoundException{
+			String devFileName, String testFileName, LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException{
 
 		System.out.println("Reading training set :" + trainingFileName);
 		trainingSet = importData(trainingFileName, labelType);
@@ -115,16 +119,19 @@ public class DataTriplet {
 		return numFeatures;
 	}
 	
-	public static InstanceList importData(String fileName, Pipe pipe) throws FileNotFoundException {
+	public static InstanceList importData(String fileName, Pipe pipe) 
+        throws FileNotFoundException, UnsupportedEncodingException {
 		return importData(fileName, null, pipe, null);
 	}
 
-	public static InstanceList importData(String dataFile, LabelType labelType) throws FileNotFoundException {
+	public static InstanceList importData(String dataFile, LabelType labelType) 
+        throws FileNotFoundException, UnsupportedEncodingException {
 		return importData(dataFile, labelType, null);
 	}
 
 	public static InstanceList importData(String dataFile, LabelType labelType,
-			Alphabet alphabet) throws FileNotFoundException {
+			Alphabet alphabet) 
+        throws FileNotFoundException, UnsupportedEncodingException {
 		return importData(dataFile, labelType, null, alphabet);
 	}	
 
@@ -133,13 +140,15 @@ public class DataTriplet {
 	 * The pipe from the first dataset should be passed into the method to create
 	 * consistent Alphabets across datasets that are being imported
 	 */
-	public static InstanceList importData(String fileName, LabelType labelType, Pipe pipe, Alphabet alphabet) throws FileNotFoundException {
+	public static InstanceList importData(String fileName, LabelType labelType, 
+            Pipe pipe, Alphabet alphabet) throws FileNotFoundException, UnsupportedEncodingException {
 		if (pipe == null) {
 			pipe = getPipe(labelType);
 		}
 		if (alphabet != null) pipe.setDataAlphabet(alphabet);
 
 		InstanceList data = new InstanceList(pipe); 
+        Reader reader = new InputStreamReader(new FileInputStream(fileName), "utf8");
 		data.addThruPipe(new CsvIterator(new FileReader(fileName), DATA_PATTERN, 3, 2, 1));
 		
 		int index = 0;

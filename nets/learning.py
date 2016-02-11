@@ -77,7 +77,8 @@ class DataTriplet(object):
 
 class Trainer(object):
 
-    def train_minibatch(self, minibatch_size, n_epochs, training_data, dev_data, test_data):
+    def train_minibatch(self, minibatch_size, n_epochs, 
+            training_data, dev_data, test_data):
         """Train minibatch with one output
 
         training_data should be a list of [X1, X2, ... Xn,Y]
@@ -93,7 +94,8 @@ class Trainer(object):
         data_triplet.test_data.extend(test_data[:-1])
         data_triplet.test_data_label.append(test_data[-1])
 
-        return self.train_minibatch_triplet(minibatch_size, n_epochs, data_triplet)
+        return self.train_minibatch_triplet(
+                minibatch_size, n_epochs, data_triplet)
 
 
     def train_minibatch_triplet(self, minibatch_size, n_epochs):
@@ -104,7 +106,7 @@ class Trainer(object):
         """
 
         patience = 5000
-        patience_increase = 10 # wait this much longer when a new best is found
+        patience_increase = 6 # wait this much longer when a new best is found
         improvement_threshold = 1.0#  0.9975
 
         n_train_batches = self.num_training_data / minibatch_size
@@ -135,11 +137,13 @@ class Trainer(object):
                     break
                 total_cost += c
                 end_time = timeit.default_timer()
+                iteration_time = end_time - start_time
                 if (iteration + 1) % validation_frequency == 0:
                     num_samples_seen = iteration * minibatch_size
                     average_cost = total_cost / num_samples_seen
-                    print 'TRAIN: iteration %s : average cost =%s' % \
-                            (iteration, average_cost)
+                    print 'TRAIN: iteration %s :' % iteration + \
+                            'takes %s seconds. ' % iteration_time + \
+                            'Average cost =%s' % average_cost
 
                     dev_data = self.data_triplet.dev_data_and_label_list()
                     dev_accuracy, c = self.eval_function_dev(*dev_data)
@@ -152,7 +156,8 @@ class Trainer(object):
                             (iteration, test_accuracy, c)
 
                     if dev_accuracy > best_dev_acc:
-                        if dev_accuracy * improvement_threshold > best_dev_acc:
+                        if dev_accuracy * improvement_threshold >\
+                                best_dev_acc:
                             patience = max(patience, 
                                     iteration * patience_increase)
                         best_dev_acc = dev_accuracy
@@ -221,7 +226,8 @@ class AdagradTrainer(Trainer):
             for i, input_var in enumerate(self.model.input):
                 givens[input_var] = T_training_data[i][start_idx:end_idx]
             for i, output_var in enumerate(self.model.output):
-                givens[output_var] = T_training_data_label[i][start_idx:end_idx]
+                givens[output_var] = \
+                        T_training_data_label[i][start_idx:end_idx]
 
         print 'Compiling training function...'
         self.train_function = theano.function(
@@ -231,7 +237,7 @@ class AdagradTrainer(Trainer):
                 givens=givens,
                 on_unused_input='warn')
 
-        #ugly crap going on to compute accuracy on the last output variable only
+        #WARNING: compute accuracy on the last output variable only
         accuracy = T.mean(T.eq(self.model.output[-1], self.model.predict[-1]))
         self.eval_function_dev = \
                 theano.function(inputs=self.model.input + self.model.output, 
@@ -251,16 +257,6 @@ class AdagradTrainer(Trainer):
 
     def reset(self):
         for sgs in self.sum_gradient_squareds:
-            value = np.zeros(sgs.get_value().shape, dtype=theano.config.floatX)
+            value = np.zeros(sgs.get_value().shape, dtype=config.floatX)
             sgs.set_value(value)
-
-
-class SGDTrainer(Trainer):
-
-    def __init__(self, model, cost_function, learning_rate):
-        self.model = model
-        self.cost_function = cost_function 
-        self.learning_rate = learning_rate
-
-        self.gparams = [T.grad(cost=cost_function, wrt=x) for x in self.model.params]
 

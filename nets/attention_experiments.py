@@ -10,7 +10,7 @@ import cognitive_disco.base_label_functions as l
 from cognitive_disco.nets.learning import AdagradTrainer, DataTriplet
 from cognitive_disco.data_reader import extract_implicit_relations
 from cognitive_disco.nets.bilinear_layer import \
-        InputLayer, NeuralNet, make_multilayer_net_from_layers
+        InputLayer, make_multilayer_net_from_layers
 from cognitive_disco.nets.attention import \
         AttentionModelSimple, AttentionLSTM
 from cognitive_disco.nets.lstm import prep_serrated_matrix_relations
@@ -70,7 +70,8 @@ def att_experiment2(dir_list, args):
     wbm = util.get_wbm(num_units)
     data_list = []
     word2vec_ff = util._get_word2vec_ff(num_units, 'sum_pool')
-    data_list = [word2vec_ff(relation_list) for relation_list in relation_list_list]
+    data_list = [word2vec_ff(relation_list) \
+            for relation_list in relation_list_list]
     label_vectors, label_alphabet = \
             util.label_vectorize(relation_list_list, sense_lf)
     data_triplet = DataTriplet(
@@ -91,24 +92,14 @@ def att_experiment3(dir_list, args):
     """LSTM Attention Mechanism for feedforward nets
     """
     experiment_name = sys._getframe().f_code.co_name    
-    sense_lf = l.SecondLevelLabel()
     num_units = int(args[0])
     num_hidden_layers = int(args[1])
     num_att_hidden_layer = int(args[2])
     dropout_arg = args[3]
     assert(dropout_arg =='d' or dropout_arg =='n')
     dropout = True if dropout_arg == 'd' else False
-    relation_list_list = [extract_implicit_relations(dir, sense_lf) 
-            for dir in dir_list]
     wbm = util.get_wbm(num_units)
-    data_list = []
-    for relation_list in relation_list_list:
-        data = prep_serrated_matrix_relations(relation_list, wbm, 70)
-        data_list.append(data)
-    label_vectors, label_alphabet = \
-            util.label_vectorize(relation_list_list, sense_lf)
-    data_triplet = DataTriplet(
-            data_list, [[x] for x in label_vectors], [label_alphabet])
+    data_triplet = util.get_data_srm(dir_list, wbm)
     num_reps = 10
     num_hidden_unit_list = [0] if num_hidden_layers == 0 \
             else [300, 400, 600, 800] 
@@ -129,7 +120,7 @@ def _train_feedforward_net(experiment_name,
     arg1_model = InputLayer(rng, wbm.num_units, False)
     arg2_model = InputLayer(rng, wbm.num_units, False)
 
-    _, all_layers = make_multilayer_net_from_layers(
+    nn, all_layers = make_multilayer_net_from_layers(
             input_layers=[arg1_model, arg2_model],
             Y=T.lvector(), use_sparse=False,
             num_hidden_layers=num_hidden_layers,
@@ -137,13 +128,11 @@ def _train_feedforward_net(experiment_name,
             num_output_units=data_triplet.output_dimensions()[0],
             output_activation_fn=T.nnet.softmax,
             dropout=dropout)
-    nn = NeuralNet(all_layers)
-    nn.input = arg1_model.input + arg2_model.input
 
     learning_rate = 0.01
     lr_smoother = 0.01
     trainer = AdagradTrainer(nn, nn.crossentropy, 
-            learning_rate, lr_smoother, data_triplet, _make_givens)
+            learning_rate, lr_smoother, data_triplet, util.make_givens)
     for rep in xrange(num_reps):
         random_seed = rep
         rng = np.random.RandomState(random_seed)
@@ -203,7 +192,8 @@ def _att_experiment_ff_helper(experiment_name, attention_model,
     learning_rate = 0.001
     lr_smoother = 0.01
     trainer = AdagradTrainer(nn, nn.crossentropy, 
-            learning_rate, lr_smoother, data_triplet, _make_givens_srm)
+            learning_rate, lr_smoother, data_triplet, 
+            util.make_givens_srm)
     for rep in xrange(num_reps):
         random_seed = rep
         rng = np.random.RandomState(random_seed)
@@ -217,8 +207,10 @@ def _att_experiment_ff_helper(experiment_name, attention_model,
         best_iter, best_dev_acc, best_test_acc = \
                 trainer.train_minibatch_triplet(minibatch_size, n_epochs)
         end_time = timeit.default_timer()
-        print end_time - start_time 
-        print best_iter, best_dev_acc, best_test_acc
+        print 'Training process takes %s seconds' % end_time - start_time 
+        print 'Best iteration is %s;' % best_iter + \
+                'Best dev accuracy = %s' % best_dev_acc + \
+                'Test accuracy =%s' % best_test_acc
         result_dict = {
                 'test accuracy': best_test_acc,
                 'best dev accuracy': best_dev_acc,
@@ -234,26 +226,6 @@ def _att_experiment_ff_helper(experiment_name, attention_model,
                 }
         json_file.write('%s\n' % json.dumps(result_dict, sort_keys=True))
 
-def _make_givens_srm(givens, input_vec, T_training_data, 
-            output_vec, T_training_data_label, start_idx, end_idx):
-    # first arg embedding and mask
-    givens[input_vec[0]] = T_training_data[0][:,start_idx:end_idx, :]
-    givens[input_vec[1]] = T_training_data[1][:,start_idx:end_idx]
-
-    # second arg embedding and mask
-    givens[input_vec[2]] = T_training_data[2][:,start_idx:end_idx, :]
-    givens[input_vec[3]] = T_training_data[3][:,start_idx:end_idx]
-
-    for i, output_var in enumerate(output_vec):
-        givens[output_var] = T_training_data_label[i][start_idx:end_idx]
-
-def _make_givens(givens, input_vec, T_training_data, 
-            output_vec, T_training_data_label, start_idx, end_idx):
-    # first arg embedding and mask
-    givens[input_vec[0]] = T_training_data[0][start_idx:end_idx]
-    givens[input_vec[1]] = T_training_data[1][start_idx:end_idx]
-    for i, output_var in enumerate(output_vec):
-        givens[output_var] = T_training_data_label[i][start_idx:end_idx]
 
 def get_net():
     """This is for debugging purposes. Should be torn apart to your taste

@@ -2,6 +2,7 @@ import numpy as np
 import theano
 from theano import config
 import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
 import tree_util
 
 class LSTM(object):
@@ -14,7 +15,7 @@ class LSTM(object):
                     ).astype(config.floatX)
 
 
-    def _init_params(self, rng, dim_proj, n_out=None, 
+    def _init_params(self, rng, dim_proj, 
             W=None, U=None, b=None, num_slices=4):
         self.params = []#a list of paramter variables
         self.input = [] #a list of input variables
@@ -78,13 +79,17 @@ class BinaryTreeLSTM(LSTM):
 
     """
 
-    def __init__(self, rng, dim_proj, n_out=None, W=None, U=None, b=None):
-        self._init_params(rng, dim_proj, n_out, W, U, b, 5)
-        word_matrix = T.tensor3(dtype=config.floatX) 
+    def __init__(self, rng, dim_proj, W=None, U=None, b=None):
+        self._init_params(rng, dim_proj, W, U, b, 5)
+        word_matrix = T.tensor3('Word matrix', dtype=config.floatX) 
 
-        c_mask = T.matrix(dtype=config.floatX)
-        node_mask = T.matrix(dtype=config.floatX)
-        children = T.tensor3(dtype='int64')
+        c_mask = T.matrix('Child mask', dtype=config.floatX)
+        node_mask = T.matrix('Node mask', dtype=config.floatX)
+        children = T.tensor3('Children', dtype='int64')
+        
+        self.X = word_matrix
+        self.mask = node_mask
+        self.c_mask = c_mask
 
         self.input = [word_matrix, children, c_mask, node_mask]
         n_samples = word_matrix.shape[1]
@@ -95,7 +100,8 @@ class BinaryTreeLSTM(LSTM):
         self.max_pooled_h = (self.h * node_mask[:, :, None]).max(axis=0) 
         self.sum_pooled_h = (self.h * node_mask[:, :, None]).sum(axis=0) 
 
-        self.mean_pooled_h = self.sum_pooled_h / T.maximum(c_mask.sum(axis=0)[:, None], 1)
+        self.mean_pooled_h = self.sum_pooled_h /\
+                T.maximum(c_mask.sum(axis=0)[:, None], 1)
         num_inner_nodes = c_mask.sum(axis=0).astype('int64')
         num_nodes = num_inner_nodes * 2 + 1
         self.top_h = self.h[num_nodes - 1, all_samples, :]
@@ -158,56 +164,125 @@ class BinaryTreeLSTM(LSTM):
     @staticmethod
     def make_givens(givens, input_vec, T_training_data, 
             output_vec, T_training_data_label, start_idx, end_idx):
+        """
+    embedding_series: 2T x N x d serrated matrix word embedding for the leaves
+    children : T x N x 3 children serrated matrix 
+    c_mask : T x N masking matrix for children matrix
+    node_mask : 2T x N masking matrix for the internal nodes 
+            (for embedding_series) nice for computing mean h or sum h
+        """
         
         givens[input_vec[0]] = T_training_data[0][:,start_idx:end_idx, :]
         givens[input_vec[1]] = T_training_data[1][:,start_idx:end_idx, :]
         givens[input_vec[2]] = T_training_data[2][:,start_idx:end_idx]
         givens[input_vec[3]] = T_training_data[3][:,start_idx:end_idx]
 
-        givens[input_vec[0+4]] = T_training_data[0+4][:,start_idx:end_idx, :]
-        givens[input_vec[1+4]] = T_training_data[1+4][:,start_idx:end_idx, :]
+        givens[input_vec[0+4]] = \
+                T_training_data[0+4][:,start_idx:end_idx, :]
+        givens[input_vec[1+4]] = \
+                T_training_data[1+4][:,start_idx:end_idx, :]
         givens[input_vec[2+4]] = T_training_data[2+4][:,start_idx:end_idx]
         givens[input_vec[3+4]] = T_training_data[3+4][:,start_idx:end_idx]
 
         # Sense label only
         if len(output_vec) == 1: 
-            givens[output_vec[0]] = T_training_data_label[0][start_idx:end_idx]
+            givens[output_vec[0]] = \
+                    T_training_data_label[0][start_idx:end_idx]
         else:
-            givens[output_vec[0]] = T_training_data_label[0][:, start_idx:end_idx, :]
-            givens[output_vec[1]] = T_training_data_label[1][:, start_idx:end_idx, :]
-            givens[output_vec[2]] = T_training_data_label[2][start_idx:end_idx]
+            givens[output_vec[0]] = \
+                    T_training_data_label[0][:, start_idx:end_idx, :]
+            givens[output_vec[1]] = \
+                    T_training_data_label[1][:, start_idx:end_idx, :]
+            givens[output_vec[2]] = \
+                    T_training_data_label[2][start_idx:end_idx]
+
+def build_stacked_lstm(num_layers, num_units, pooling, dropout_p):
+    lstm_layers = []
+    top_layer = None
+    rng = np.random.RandomState(100)
+    for i in range(num_layers):
+        last_layer = i == (num_layers - 1)
+        lstm_layer = SerialLSTM(rng, num_units, 
+                pooling=pooling if last_layer else None,
+                parent_layer=top_layer,
+                dropout_p=dropout_p)
+        top_layer = lstm_layer
+        lstm_layers.append(lstm_layer)
+    return lstm_layers
 
 class SerialLSTM(LSTM):
 
-    def __init__(self, rng, dim_proj, n_out=None, W=None, U=None, b=None):
-        self._init_params(rng, dim_proj, n_out, W, U, b, 4)
+    def __init__(self, rng, dim_proj, pooling, parent_layer=None,
+            W=None, U=None, b=None, dropout_p=1.0):
+        self._init_params(rng, dim_proj, W, U, b, 4)
+        self.dropout_p = dropout_p
+        self.n_out = dim_proj
+        self.srng = RandomStreams()
 
-        X = T.tensor3('x', dtype=config.floatX) 
-        mask = T.matrix('mask', dtype=config.floatX)
-        self.input = [X, mask]
-        n_samples = X.shape[1]
+        if parent_layer is None:
+            self.X = T.tensor3('x', dtype=config.floatX) 
+            self.mask = T.matrix('mask', dtype=config.floatX)
+            self.c_mask = None
+            self.h_train = self.project(
+                    self.X, self.mask, self.dropout_p, True)
+            self.h_test = self.project(
+                    self.X, self.mask, self.dropout_p, False)
+        else:
+            self.X = parent_layer.X
+            self.mask = parent_layer.mask
+            self.c_mask = None
+            self.h_train = self.project(
+                    parent_layer.h_train, self.mask, self.dropout_p, True)
+            self.h_test = self.project(
+                    parent_layer.h_test, self.mask, self.dropout_p, False)
 
-        self.h = self.project(X, mask)
-
-        self.max_pooled_h = (self.h * mask[:, :, None]).max(axis=0) 
-        self.sum_pooled_h = (self.h * mask[:, :, None]).sum(axis=0) 
-        self.mean_pooled_h = self.sum_pooled_h / mask.sum(axis=0)[:, None]
-        self.top_h = self.h[mask.sum(axis=0).astype('int64') - 1,
-                T.arange(n_samples), :]
-
+        self.input = [self.X, self.mask]
+        n_samples = self.X.shape[1]
+        if pooling == 'max_pool':
+            self.activation_train = \
+                    (self.h_train * self.mask[:, :, None]).max(axis=0) 
+            self.activation_test = \
+                    (self.h_test * self.mask[:, :, None]).max(axis=0) 
+        elif pooling == 'sum_pool':
+            self.activation_train = \
+                    (self.h_train * self.mask[:, :, None]).sum(axis=0) 
+            self.activation_test = \
+                    (self.h_test * self.mask[:, :, None]).sum(axis=0) 
+        elif pooling == 'mean_pool':
+            sum_pooled = \
+                    (self.h_train * self.mask[:, :, None]).sum(axis=0) 
+            self.activation_train = \
+                    sum_pooled / self.mask.sum(axis=0)[:, None]
+            sum_pooled = (self.h_test * self.mask[:, :, None]).sum(axis=0) 
+            self.activation_test = \
+                    sum_pooled / self.mask.sum(axis=0)[:, None]
+        elif pooling == 'top':
+            last_indices = self.mask.sum(axis=0).astype('int64') - 1
+            self.activation_train = \
+                    self.h_train[last_indices, T.arange(n_samples), :]
+            self.activation_test = \
+                    self.h_test[last_indices, T.arange(n_samples), :]
+        else:
+            self.activation_train = self.h_train
+            self.activation_test = self.h_test
 
     def reset(self, rng):
         self._reset(rng, 4)
 
-    def project(self, embedding_series, mask):
+    def project(self, embedding_series, mask, dropout_p, training):
         nsteps = embedding_series.shape[0]
         if embedding_series.ndim == 3:
             n_samples = embedding_series.shape[1]
         else:
             n_samples = 1
 
+        dropout_mask = self.srng.binomial(
+                size=[embedding_series.shape[-1]], 
+                p=dropout_p, dtype=config.floatX)
+
         def _step(m_, x_, h_, c_):
             # x_ is actually x * W so we don't multiply again
+            
             preact = T.dot(h_, self.U) + x_
 
             i = T.nnet.sigmoid(_slice(preact, 0, self.dim_proj))
@@ -225,10 +300,13 @@ class SerialLSTM(LSTM):
 
             return h, c
 
-        previous_state = T.dot(embedding_series, self.W) + self.b
+        if training:
+            w_dot_x = T.dot(embedding_series * dropout_mask, self.W) + self.b
+        else:
+            w_dot_x = T.dot(embedding_series, self.W * dropout_p) + self.b
 
         rval, updates = theano.scan(_step, 
-                sequences=[mask, previous_state], 
+                sequences=[mask, w_dot_x], 
                 outputs_info=[
                     T.alloc(np_floatX(0.), n_samples, self.dim_proj), 
                     T.alloc(np_floatX(0.), n_samples, self.dim_proj)], 
@@ -319,13 +397,14 @@ def prep_tree_srm_arg(relation_list, arg_pos, wbm, max_length,
             children[i, :num_inner_nodes, :] = ordering_matrix[num_leaves:num_nodes, :]
             c_mask[:num_inner_nodes, i] = 1.
             node_mask[num_leaves:num_nodes, i] = 1. 
-            for t, node_label in enumerate(node_label_list):
-                if node_label is not None and t < (2 * max_length):
-                    if node_label in node_label_alphabet:
-                        label_index = node_label_alphabet[node_label]
-                    else:
-                        label_index = node_label_alphabet['OTHERS']
-                    node_label_tensor[t, i, label_index] = 1.
+            if len(node_label_alphabet) > 0:
+                for t, node_label in enumerate(node_label_list):
+                    if node_label is not None and t < (2 * max_length):
+                        if node_label in node_label_alphabet:
+                            label_index = node_label_alphabet[node_label]
+                        else:
+                            label_index = node_label_alphabet['OTHERS']
+                        node_label_tensor[t, i, label_index] = 1.
 
     children = np.swapaxes(children, 0, 1)
     embedding_series = \

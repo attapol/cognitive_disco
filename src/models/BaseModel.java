@@ -27,6 +27,14 @@ public abstract class BaseModel {
 		String testSet = "conll15-st-05-19-15-test/" + featureFileForAllDir;
 		data = new DataTriplet(trainingSet, devSet, testSet);
 	}
+
+    public BaseModel(String partialDir, String featureFileForAllDir) {
+		String trainingSet = partialDir + "-train/" + featureFileForAllDir;
+		String devSet = partialDir + "-dev/" + featureFileForAllDir;
+		String testSet = partialDir + "-test/" + featureFileForAllDir;
+		data = new DataTriplet(trainingSet, devSet, testSet);
+
+    }
 	
 	public abstract ClassifierTrainer<?> getTrainer();
 		
@@ -48,6 +56,7 @@ public abstract class BaseModel {
 		System.out.println(results[0].toString());
 		System.out.println("Test set results");
 		System.out.println(results[1].toString());
+        //System.out.println("Number of features in the training set : " + classifier.getAlphabet().size());
 		return results;
 	}
 	

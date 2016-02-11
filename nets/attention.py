@@ -1,9 +1,8 @@
-import theano
 import theano.tensor as T
 from theano import config
-import numpy as np
 
-from cognitive_disco.nets.bilinear_layer import make_multilayer_net
+from cognitive_disco.nets.bilinear_layer import \
+        make_multilayer_net, make_multilayer_net_from_layers
 from cognitive_disco.nets.lstm import SerialLSTM
 
 class AttentionModelBase(object):
@@ -48,7 +47,8 @@ class AttentionModelSimple(AttentionModelBase):
         self.att_net, _ = make_multilayer_net(rng, 
                 num_units, self.X, None, False, 
                 num_hidden_layers, num_hidden_units, 1, 
-                lambda x: 1 / (1 + T.exp(-x)), dropout)
+                T.nnet.sigmoid, dropout)
+                #lambda x: 1 / (1 + T.exp(-x)), dropout)
         self.params = self.att_net.params
         self.compute_activations()
 
@@ -70,16 +70,16 @@ class AttentionLSTM(AttentionModelBase):
         self.num_hidden_layers = num_hidden_layers
         self.dropout = dropout
         self.n_out = num_units
-
-        self.X = T.tensor3('x', dtype=config.floatX) 
-        self.mask = T.matrix('mask', dtype=config.floatX)
-        self.input = [self.X, self.mask]
-
-        self.att_lstm = SerialLSTM(rng, num_units) 
-        self.att_net, _ = make_multilayer_net(rng, 
-                num_units, self.att_lstm.h, None, False, 
+    
+        self.att_lstm = SerialLSTM(rng, num_units, pooling=None, 
+                dropout_p=0.85 if dropout else 1.0)
+        self.att_net, _ = make_multilayer_net_from_layers(
+                [self.att_lstm], None, False, 
                 num_hidden_layers, num_hidden_units, 1, 
-                lambda x: 1 / (1 + T.exp(-x)), dropout)
+                T.nnet.sigmoid, dropout)
+        self.params = self.att_net.params 
+        self.input = self.att_lstm.input
+        self.X, self.mask = self.input
         self.compute_activations()
 
     def _compute_attention(self):
@@ -90,4 +90,3 @@ class AttentionLSTM(AttentionModelBase):
     def reset(self, rng):
         self.att_lstm.reset(rng)
         self.att_net.reset(rng)
-

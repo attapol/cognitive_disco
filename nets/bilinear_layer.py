@@ -60,6 +60,53 @@ class InputLayer(object):
     def reset(self, rng):
         pass
 
+class MaskedInputLayer(object):
+
+    def __init__(self, rng, size, pooling=None, 
+            X=None, mask=None, c_mask=None):
+        #concatenate all of the variables in the input list
+        if X is not None and mask is not None:
+            self.X = X
+            self.mask = mask
+        #elif X is None and mask is None:
+            #self.X = T.tensor3('x', dtype=theano.config.floatX) 
+            #self.mask = T.matrix('mask', dtype=theano.config.floatX)
+        else: 
+            raise ValueError('X and mask must be both specified')
+
+        self.input = [self.X, self.mask]
+        self.rng = rng
+        self.n_out = size
+        if pooling == 'sum_pool':
+            activation = (X * mask[:, :, None]).sum(axis=0)
+            self.activation_train = activation
+            self.activation_test = activation
+        elif pooling == 'max_pool':
+            activation = (X * mask[:, :, None]).max(axis=0)
+            self.activation_train = activation
+            self.activation_test = activation
+        elif pooling == 'mean_pool':
+            activation = (X * mask[:, :, None]).sum(axis=0) /\
+                T.maximum(c_mask.sum(axis=0)[:, None], 1)
+            self.activation_train = activation
+            self.activation_test = activation
+        elif pooling == 'top':
+            n_samples = X.shape[1]
+            all_samples = T.arange(n_samples)
+            num_inner_nodes = c_mask.sum(axis=0).astype('int64')
+            num_nodes = num_inner_nodes * 2 + 1
+            activation = X[num_nodes - 1, all_samples, :]
+
+            self.activation_train = activation
+            self.activation_test = activation
+        else:
+            raise ValueError('Invalid pooling type %s' % pooling)
+        self.params = []
+
+    def reset(self, rng):
+        pass
+
+
 class LinearLayer(object):
     """Linear Layer that supports multiple separate input (sparse) vectors
 
@@ -100,17 +147,30 @@ class LinearLayer(object):
             input_train = parent_layer.activation_train
             input_test = parent_layer.activation_test
             dropout_mask = self.srng.binomial(
-                    size=input_train.shape, p=dropout_p)
+                    size=[input_train.shape[-1]], p=dropout_p, 
+                    dtype=theano.config.floatX)
             if type(input_train) == theano.sparse.basic.SparseVariable:
-                net_train += theano.sparse.structured_dot(
-                        input_train * dropout_mask, self.W_list[i])
-                net_test += theano.sparse.structured_dot(
-                        input_test, self.W_list[i] * dropout_p)
+
+                if dropout_p < 1:
+                    net_train += theano.sparse.structured_dot(
+                            input_train * dropout_mask, self.W_list[i])
+                    net_test += theano.sparse.structured_dot(
+                            input_test, self.W_list[i] * dropout_p)
+                else:
+                    net_train += theano.sparse.structured_dot(
+                            input_train, self.W_list[i])
+                    net_test += theano.sparse.structured_dot(
+                            input_test, self.W_list[i])
             else:
-                net_train += T.dot(
-                        input_train * dropout_mask, self.W_list[i])
-                net_test += T.dot(
-                        input_test, self.W_list[i] * dropout_p)
+                if dropout_p < 1:
+                    net_train += T.dot(
+                            input_train * dropout_mask, self.W_list[i])
+                    net_test += T.dot(
+                            input_test, self.W_list[i] * dropout_p)
+                else:
+                    net_train += T.dot(input_train, self.W_list[i])
+                    net_test += T.dot(input_test, self.W_list[i])
+
 
         self.activation_train = net_train if activation_fn is None\
             else activation_fn(net_train)
@@ -129,7 +189,7 @@ class LinearLayer(object):
                     lambda a, y: T.maximum(0, 1 - a[y] + a).sum() - 1,
                     sequences=[self.activation_train, Y])
             self.hinge_loss = hinge_loss_instance.sum()
-            likelihood = self.activation_train[T.arange(Y.shape[0]), Y]
+            likelihood = self.activation_train[T.arange(Y.shape[0]), Y].astype(theano.config.floatX)
             self.crossentropy = -T.mean(T.log(likelihood))
 
     def _get_init_param_values(self, rng):
@@ -224,7 +284,6 @@ def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
         output_activation_fn=T.nnet.softmax, dropout=True):
     rng = input_layers[0].rng
     layers = []
-    layers.extend(input_layers)
     if num_hidden_layers > 0:
         hidden_layers = add_hidden_layers(input_layers,
                 num_hidden_units, num_hidden_layers, dropout)
@@ -239,7 +298,11 @@ def make_multilayer_net_from_layers(input_layers, Y, use_sparse,
                 activation_fn=output_activation_fn,
                 dropout_p=0.5 if dropout else 1)
     layers.append(output_layer)
-    return NeuralNet(layers), layers
+    nn = NeuralNet(input_layers + layers)
+    nn.input = []
+    for input_layer in input_layers:
+        nn.input.extend(input_layer.input)
+    return nn, layers
 
 
 def add_hidden_layers(input_layers,
