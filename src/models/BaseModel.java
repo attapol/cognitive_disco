@@ -1,6 +1,7 @@
 package models;
 
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 
 import types.DataTriplet;
 import types.SimpleConfusionMatrix;
@@ -38,7 +39,7 @@ public abstract class BaseModel {
 	
 	public abstract ClassifierTrainer<?> getTrainer();
 		
-	public SimpleConfusionMatrix[] trainTest(boolean importData) throws FileNotFoundException{
+	public SimpleConfusionMatrix[] trainTest(boolean importData) throws FileNotFoundException, UnsupportedEncodingException{
 		if (importData)data.importData();
 		ClassifierTrainer<?> trainer = getTrainer();
 
@@ -60,7 +61,7 @@ public abstract class BaseModel {
 		return results;
 	}
 	
-	public void trainTest() throws FileNotFoundException{
+	public void trainTest() throws FileNotFoundException, UnsupportedEncodingException{
 		trainTest(true);
 	}
 	

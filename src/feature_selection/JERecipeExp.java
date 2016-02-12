@@ -3,6 +3,7 @@ package feature_selection;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -24,7 +25,7 @@ public class JERecipeExp {
 		
 	}
 
-	public void run() throws FileNotFoundException {
+	public void run() throws FileNotFoundException, UnsupportedEncodingException {
 		InfoGainSelectFeatures[] igss = new InfoGainSelectFeatures[] {
 				new InfoGainSelectFeatures("production_rules.original_label.features", 100),
 				new InfoGainSelectFeatures("word_pairs.original_label.features", 500),
@@ -45,7 +46,7 @@ public class JERecipeExp {
 	}
 
 	public void createSparseMatrix(InfoGainSelectFeatures[] igss, DataTriplet.DataSplitType dType,
-			String fileName, HashMap<String, Integer> featureToIndex, boolean printLabel) throws FileNotFoundException {
+			String fileName, HashMap<String, Integer> featureToIndex, boolean printLabel) throws FileNotFoundException, UnsupportedEncodingException {
 		String dirName = igss[0].model.data.getDataFileName(dType).split("/")[0];
 		String fullPath = dirName + "/" + fileName;
 		PrintWriter writer = new PrintWriter(new File(fullPath));	

@@ -2,6 +2,7 @@ package models;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import org.json.JSONException;
 
@@ -27,13 +28,13 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 	}
 
 	@Override
-	public void trainTest() throws FileNotFoundException {
+	public void trainTest() throws FileNotFoundException, UnsupportedEncodingException {
 		for (LabelType labelType : LabelType.values()){
 			trainTest(labelType);
 		}
 	}
 	
-	public SimpleConfusionMatrix[] trainTest(LabelType labelType) throws FileNotFoundException {
+	public SimpleConfusionMatrix[] trainTest(LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException {
 		ClassifierTrainer<?> trainer = new MaxEntTrainer();
 		SimpleConfusionMatrix cm;
 		Trial baselineResult;
@@ -57,7 +58,7 @@ public class BaselineMaxEntModel extends CognitiveDiscourseParserBase {
 
 	// TODO: Does not support all three label types yet
 	@Override
-	public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException {
+	public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException {
 		// TODO Auto-generated method stub
 		InstanceList unseenData = DataTriplet.importData(dataFile, classifier.getInstancePipe());
 		int numInstances = unseenData.size();

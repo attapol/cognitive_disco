@@ -2,6 +2,7 @@ package models;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
 import org.json.JSONException;
@@ -66,12 +67,12 @@ public abstract class CognitiveDiscourseParserBase {
 	 * Train on the training set and test on the dev set 
 	 * Print out the results in a confusion matrix and overall accuracy
 	 */
-	abstract public void trainTest() throws FileNotFoundException, JSONException;
+	abstract public void trainTest() throws FileNotFoundException, JSONException, UnsupportedEncodingException;
 	
 	/*
 	 * This will read in the feature file 
 	 * and return a string array of labels
 	 */
-	abstract public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException;
+	abstract public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException;
 
 }

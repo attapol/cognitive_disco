@@ -31,6 +31,16 @@ public class ResultWriter {
 		log.append(text + "\n");
 	}
 	
+	public void writeAccuracy(SimpleConfusionMatrix cm) throws JSONException {
+		double accuracy = cm.computeAccuracy();
+		double baselineAccuracy = cm.computeBaselineAccuracy();
+		HashMap<String, Object> information = new HashMap<String, Object>();
+		information.put("accuracy", accuracy);
+		information.put("baseline accuracy", baselineAccuracy);
+		write(information);
+
+	}
+	
 	public void write(SimpleConfusionMatrix cm) throws JSONException {
 		write(cm, new HashMap<String, Object>());
 	}

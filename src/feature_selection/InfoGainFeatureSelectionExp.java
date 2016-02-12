@@ -30,8 +30,8 @@ public class InfoGainFeatureSelectionExp {
 		int bestNumFeatures = 0;
 		for (int numFeatures : numFeatureList){
 			FeatureSelection fs = new FeatureSelection(infoGain, numFeatures); model.data.setFeatureSelection(fs); SimpleConfusionMatrix[] results = model.trainTest(false); SimpleConfusionMatrix devResults = results[0]; SimpleConfusionMatrix testResults = results[1]; 
-			double devAccuracy = devResults.getAccuracy();
-			double testAccuracy = testResults.getAccuracy();
+			double devAccuracy = devResults.computeAccuracy();
+			double testAccuracy = testResults.computeAccuracy();
 			if (testAccuracy > bestTestAccuracy) {
 				bestNumFeatures = numFeatures;
 				bestTestAccuracy = testAccuracy;

@@ -139,7 +139,7 @@ public class SimpleConfusionMatrix{
 		return total;
 	}
 
-	public double getAccuracy ()
+	public double computeAccuracy ()
 	{
 		int correct = 0;
 		int total = 0;
@@ -153,7 +153,7 @@ public class SimpleConfusionMatrix{
 		return round(accuracy, 4);
 	}
 	
-	public double getPrecision (int predictedClassIndex)
+	public double computePrecision (int predictedClassIndex)
 	{
 		int total = 0;
 		for (int trueClassIndex=0; trueClassIndex < this.numClasses; trueClassIndex++) {
@@ -167,7 +167,7 @@ public class SimpleConfusionMatrix{
 		}
 	}
 	
-	public double getRecall (int trueClassIndex)
+	public double computeRecall (int trueClassIndex)
 	{
 		int total = 0;
 		for (int predictedClassIndex=0; predictedClassIndex < this.numClasses; predictedClassIndex++) {
@@ -181,9 +181,9 @@ public class SimpleConfusionMatrix{
 		}
 	}
 	
-	public double getF1 (int classIndex){
-		double precision = getPrecision(classIndex);
-		double recall = getRecall(classIndex);
+	public double computeF1 (int classIndex){
+		double precision = computePrecision(classIndex);
+		double recall = computeRecall(classIndex);
 		double f1 = 0.0;
 		if (precision + recall != 0)
 			f1 = 2 * (precision * recall) / (precision + recall);
@@ -205,7 +205,7 @@ public class SimpleConfusionMatrix{
 			String newString = classifier.getClass().getName() + "\n";
 			sb.append(newString);
 		}
-		double accuracy = getAccuracy();
+		double accuracy = computeAccuracy();
 		double macroF1 = 0.0;
 		double microF1 = 0.0;
 		int datasetSize = 0;
@@ -213,7 +213,7 @@ public class SimpleConfusionMatrix{
 			sb.append((String) labelAlphabet.lookupObject(i));
 			//sb.append((String) labelAlphabet.lookupLabel(i).getEntry());
 			sb.append("\t");
-			double precision = getPrecision(i); double recall = getRecall(i);
+			double precision = computePrecision(i); double recall = computeRecall(i);
 			double f1 = 0.0;
 			if (precision + recall != 0)
 				f1 = 2*(precision * recall)/(precision + recall);
@@ -221,7 +221,7 @@ public class SimpleConfusionMatrix{
 			int numClassOccurrences = getNumOccurrences(i);
 			microF1 += f1 * numClassOccurrences;
 			datasetSize += numClassOccurrences;
-			sb.append("precision " + round(getPrecision(i),4) + "\t recall " + round(getRecall(i),4) + "\t F1 " + round(f1,4) + "\n");
+			sb.append("precision " + round(computePrecision(i),4) + "\t recall " + round(computeRecall(i),4) + "\t F1 " + round(f1,4) + "\n");
 		}
 		macroF1 = macroF1 / labelAlphabet.size();
 		microF1 = microF1 / datasetSize;
@@ -229,6 +229,15 @@ public class SimpleConfusionMatrix{
 		return sb.toString();
 	}
 	
+	
+	public double computeBaselineAccuracy() {
+		double[] distribution = new double[values.length];
+		for (int i = 0; i < distribution.length; i++) {
+			distribution[i] = MatrixOps.sum(values[i]);
+		}
+		double baselineAccuracy = MatrixOps.max(distribution) / MatrixOps.sum(distribution);
+		return round(baselineAccuracy, 4);
+	}
 	/*
 	 * Returns the json with performance report
 	 * 
@@ -242,8 +251,8 @@ public class SimpleConfusionMatrix{
 		JSONObject classwise = new JSONObject();
 		for (int i = 0; i < labelAlphabet.size(); i++){
 			String labelName = (String) labelAlphabet.lookupObject(i);
-			double precision = getPrecision(i); double recall = getRecall(i);
-			double f1 = getF1(i);
+			double precision = computePrecision(i); double recall = computeRecall(i);
+			double f1 = computeF1(i);
 			
 			JSONObject metricDict = new JSONObject();
 			metricDict.put("precision", round(precision,4));
@@ -257,10 +266,10 @@ public class SimpleConfusionMatrix{
 			distribution[i] = MatrixOps.sum(values[i]);
 			labelNames[i] = (String) labelAlphabet.lookupObject(i);
 		}
-		double baselineAccuracy = MatrixOps.max(distribution) / MatrixOps.sum(distribution);
+		double baselineAccuracy = computeBaselineAccuracy();
 
 		JSONObject metricDict = new JSONObject();
-		metricDict.put("accuracy", getAccuracy());
+		metricDict.put("accuracy", computeAccuracy());
 		metricDict.put("baseline accuracy", baselineAccuracy);
 		metricDict.put("distribution", distribution);
 		metricDict.put("labels", labelNames);
@@ -286,7 +295,7 @@ public class SimpleConfusionMatrix{
 		for (int i = 0; i < distribution.length; i++)
 			distribution[i] = MatrixOps.sum(values[i]);
 		double baselineAccuracy = MatrixOps.max(distribution) / MatrixOps.sum(distribution);
-		sb.append ("Confusion Matrix, row=true, column=predicted  accuracy="+getAccuracy()+" most-frequent-tag baseline="+baselineAccuracy+"\n");
+		sb.append ("Confusion Matrix, row=true, column=predicted  accuracy="+computeAccuracy()+" most-frequent-tag baseline="+baselineAccuracy+"\n");
 		
 		for (int i = 0; i < maxLabelNameLength-5+4; i++) sb.append (' ');
 		sb.append ("label");

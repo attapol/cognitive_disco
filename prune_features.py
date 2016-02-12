@@ -5,14 +5,13 @@ from codecs import open as copen
 import argparse
 
 
-def get_feature_counter(file_name):
+def get_feature_counter(file_name, counter):
     """Count each feature and put the counts in a Counter
     
     Assume this format
     
     [name]\t[label]\t[feature1] [feature2] ...
     """
-    counter = Counter()
     lines = copen(file_name, encoding='utf8').readlines()
     for line in lines:
         name, label, features = line.strip().split('\t')
@@ -42,22 +41,27 @@ def write_training_file(file_name, new_file_name, counter, cutoff):
     new_training_file.close()
 
 
-def prune_features_cutoff_list(file_name, cutoff_list):
-    counter = get_feature_counter(file_name)
+def prune_features_cutoff_list(file_names, cutoff_list):
+    counter = Counter()
+    for file_name in file_names:
+        get_feature_counter(file_name, counter)
     num_features = len(counter)
     for cutoff in cutoff_list:
         num_reduced_features = len([x for x in counter if counter[x] > cutoff])
         print 'From %s features reduced to %s features' % (num_features, num_reduced_features)
-        file_no_ext, ext = os.path.splitext(file_name)
-        new_file_name = '%s-pruned-%s%s' % (file_no_ext, cutoff, ext)
-        print 'Writing to %s' % new_file_name
-        write_training_file(file_name, new_file_name, counter, cutoff)
+        for file_name in file_names:
+            file_no_ext, ext = os.path.splitext(file_name)
+            new_file_name = '%s-pruned-%s%s' % (file_no_ext, cutoff, ext)
+            print 'Writing to %s' % new_file_name
+            write_training_file(file_name, new_file_name, counter, cutoff)
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('file_name', help='the file name of the training set csv that needs pruning', type=str)
-    argparser.add_argument('--cutoff', help='the cutoff count', default=20, type=int, nargs='+')
+    argparser.add_argument('--file_names', 
+            help='the file name of the datasets that need pruning', type=str, nargs='+')
+    argparser.add_argument('--cutoff', 
+            help='the cutoff count', default=20, type=int, nargs='+')
     args = argparser.parse_args()
-    prune_features_cutoff_list(args.file_name, args.cutoff)
+    prune_features_cutoff_list(args.file_names, args.cutoff)
 
 

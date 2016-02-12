@@ -3,6 +3,7 @@ package feature_selection;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.BitSet;
 import java.util.HashMap;
 
@@ -25,7 +26,7 @@ public class InfoGainSelectFeatures {
 	private int numFeatures;
 	public FeatureSelection featureSelection;
 
-	public InfoGainSelectFeatures(String experimentName, int numFeatures) throws FileNotFoundException {
+	public InfoGainSelectFeatures(String experimentName, int numFeatures) throws FileNotFoundException, UnsupportedEncodingException {
 		// TODO Auto-generated constructor stub
 		model = new MaxEntModel(experimentName);
 		this.experimentName = experimentName;
@@ -38,7 +39,7 @@ public class InfoGainSelectFeatures {
 	//	model.trainTest(false);
 	}
 	
-	public void writeFeatures() throws FileNotFoundException {
+	public void writeFeatures() throws FileNotFoundException, UnsupportedEncodingException {
 		HashMap<Integer, Integer> oldToNewMapping = new HashMap<Integer, Integer>();
 		String newFileName = getFileName(model.data.getTrainingFileName(), experimentName, numFeatures);
 		String modelFileName = newFileName+".model";
@@ -136,7 +137,7 @@ public class InfoGainSelectFeatures {
 		writer.close();
 	}
 
-	public static void main(String[] args) throws NumberFormatException, FileNotFoundException {
+	public static void main(String[] args) throws NumberFormatException, FileNotFoundException, UnsupportedEncodingException {
 		// TODO Auto-generated method stub
 		InfoGainSelectFeatures ig = new InfoGainSelectFeatures(args[0], Integer.parseInt(args[1]));
 		ig.writeFeatures();

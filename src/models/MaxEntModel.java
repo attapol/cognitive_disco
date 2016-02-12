@@ -3,6 +3,7 @@ package models;
 import types.Util;
 
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.MaxEnt;
@@ -34,7 +35,7 @@ public class MaxEntModel extends BaseModel{
 		return maxent.getParameters();
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
 		MaxEntModel m;
 		if (args.length == 3) {
 			m = new MaxEntModel(args[0], args[1], args[2]);

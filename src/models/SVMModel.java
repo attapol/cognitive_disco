@@ -1,6 +1,7 @@
 package models;
 
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 
 import ca.uwo.csd.ai.nlp.kernel.LinearKernel;
 import ca.uwo.csd.ai.nlp.mallet.libsvm.SVMClassifierTrainer;
@@ -22,7 +23,7 @@ public class SVMModel extends BaseModel {
 		return trainer;
 	}
 
-	public static void main(String[] args) throws FileNotFoundException{
+	public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException{
 		SVMModel model;
 		if (args.length > 1) {
 			model = new SVMModel(args[0], args[1], args[2]);

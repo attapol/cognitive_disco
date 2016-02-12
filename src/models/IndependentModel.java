@@ -2,6 +2,7 @@ package models;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -33,7 +34,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 	
 	abstract public ClassifierTrainer<?> getNewTrainer();
 
-	public ArrayList<ArrayList<String>> classifyDimensions(String dataFile, LabelType labelType) throws FileNotFoundException {
+	public ArrayList<ArrayList<String>> classifyDimensions(String dataFile, LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException {
 		if (classifiers == null){
 			System.err.println("The classifiers have not been loaded or trained. Returning empty results");
 			return null;
@@ -65,7 +66,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 		return predictedDimensions;
 	}
 
-	public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException {
+	public String[] classify(String dataFile, LabelType labelType) throws FileNotFoundException, UnsupportedEncodingException {
 		ArrayList<ArrayList<String>> predictedDimensions = classifyDimensions(dataFile, labelType);
 		int numInstances = predictedDimensions.size();
 		String[] predictedLabels = new String[numInstances];
@@ -76,7 +77,7 @@ public abstract class IndependentModel extends CognitiveDiscourseParserBase{
 	}
 
 	
-	public void trainTest() throws FileNotFoundException, JSONException{
+	public void trainTest() throws FileNotFoundException, JSONException, UnsupportedEncodingException{
 		// Train on each dimension
 		int numDimensions = this.data.length;
 		Trial[] trials = new Trial[numDimensions];

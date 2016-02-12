@@ -1,7 +1,9 @@
 package models;
 
 import types.Util;
+
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 
 import cc.mallet.classify.ClassifierTrainer;
 import cc.mallet.classify.NaiveBayesTrainer;
@@ -28,7 +30,7 @@ public class NaiveBayesModel extends BaseModel {
 		return new NaiveBayesTrainer();
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
 		// TODO Auto-generated method stub
 		NaiveBayesModel m;
 		if (args.length == 3) {
