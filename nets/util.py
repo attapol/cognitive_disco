@@ -24,7 +24,23 @@ def _get_word2vec_ff(num_units, projection):
     elif projection == 'top':
         return word2vec.top_args
     else:
-        raise ValueError('projection must be one of {mean_pool, top, max_pool, top}. Got %s ' % projection)
+        raise ValueError('projection must be one of {mean_pool, sum_pool, max_pool, top}. Got %s ' % projection)
+
+def _get_zh_word2vec_ff(num_units, vec_type, projection):
+    prefix = 'zh_gigaword3'
+    file_name = '/home/j/llc/tet/nlp/lib/lexicon/homemade_word_vector/%s-%s%s.txt' \
+            % (prefix, vec_type, num_units)
+    word2vec = df.EmbeddingFeaturizer(file_name)
+    if projection == 'mean_pool':
+        return word2vec.mean_args
+    elif projection == 'sum_pool':
+        return word2vec.additive_args
+    elif projection == 'max_pool':
+        return word2vec.max_args
+    elif projection == 'top':
+        return word2vec.top_args
+    else:
+        raise ValueError('projection must be one of {mean_pool, sum_pool, max_pool, top}. Got %s ' % projection)
 
 def _sparse_featurize_relation_list(relation_list, ff_list, alphabet=None):
     if alphabet is None:

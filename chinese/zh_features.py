@@ -14,23 +14,33 @@ def powerset(seq, i):
             yield item
 
 
+def powerset_features(dir_list, label_f, brown_f, naming_f):
+    features = [f.word_pairs, f.production_rules, f.dependency_rules, brown_f.brown_word_pairs]
+    feature_names = ['wp', 'pr', 'dr', 'bp']
+    for feature_set, feature_set_name in zip(powerset(features, 0), powerset(feature_names,0)):
+        if len(feature_set) > 1:
+            print feature_set_name
+            name = '_'.join(feature_set_name)
+            generate_feature_files(dir_list, feature_set, [label_f], naming_f, name)
+
 def main():
     dir_list = [
         'conll16st-zh-01-08-2016-train',
         'conll16st-zh-01-08-2016-dev',
         'conll16st-zh-01-08-2016-test',
         ]
-    bf = f.BrownClusterFeaturizer(f.BrownClusterFeaturizer.ZH_BROWN)
     nf = doc_id_relation_id_nf
-    original_label = l.OriginalLabel()
-    features = [f.word_pairs, f.production_rules, f.dependency_rules, bf.brown_word_pairs]
-    feature_names = ['wp', 'pr', 'dr', 'bp']
-    for feature_set, feature_set_name in zip(powerset(features, 0), powerset(feature_names,0)):
-        if len(feature_set) > 1:
-            print feature_set_name
-            name = '_'.join(feature_set_name)
-            generate_feature_files(dir_list, feature_set, [original_label], nf, name)
+    lf = l.OriginalLabel()
 
+    bf1000 = f.BrownClusterFeaturizer('/home/j/llc/tet/nlp/lib/lexicon/brown_clusters/gigaword-zh-c1000.txt')
+    bf3200 = f.BrownClusterFeaturizer('/home/j/llc/tet/nlp/lib/lexicon/brown_clusters/gigaword-zh-c3200.txt')
+    generate_feature_files(dir_list, [bf1000.brown_word_pairs], [lf], nf, 'brown1000c_word_pairs')
+    generate_feature_files(dir_list, [bf3200.brown_word_pairs], [lf], nf, 'brown3200c_word_pairs')
+
+    #generate_feature_files(dir_list, [bf.brown_word_pairs], [original_label], nf, 'brown_word_pairs')
+
+    #bf = f.BrownClusterFeaturizer(f.BrownClusterFeaturizer.ZH_BROWN)
+    #powerset_features(dir_list, lf, bf, nf)
     #generate_feature_files(dir_list, [f.word_pairs], [original_label], nf, 'word_pairs')
     #generate_feature_files(dir_list, [f.production_rules], [original_label], nf, 'production_rules')
     #generate_feature_files(dir_list, [f.dependency_rules], [original_label], nf, 'dependency_rules')

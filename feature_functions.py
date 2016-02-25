@@ -407,8 +407,8 @@ class BrownClusterFeaturizer(object):
     def __init__(self, brown_cluster_file_name=None):
         self.word_to_brown_mapping = {}
         if brown_cluster_file_name == None:
-            brown_cluster_file_name = self.EN_BROWN
-        self._load_brown_clusters('resources/%s' % brown_cluster_file_name)
+            brown_cluster_file_name = 'resources/%s' % self.EN_BROWN
+        self._load_brown_clusters(brown_cluster_file_name)
 
     def _load_brown_clusters(self, path):
         try:
